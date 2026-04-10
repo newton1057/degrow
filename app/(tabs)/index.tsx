@@ -1,166 +1,81 @@
 import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  type ViewStyle,
-} from 'react-native';
+import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { WEEK_DAY_KEYS, getTodayDayKey, type HabitItem } from '@/constants/habits';
 
-type DayItem = {
-  label: string;
+import { useHabits } from '@/providers/habits-provider';
+import { useI18n } from '@/providers/language-provider';
+import { useAppTheme } from '@/providers/theme-provider';
+
+function getHabitLabel(habit: HabitItem, t: (key: string) => string) {
+  return habit.titleKey ? t(habit.titleKey) : habit.title ?? t('newHabit.previewFallback');
+}
+
+function DayCircle({
+  day,
+  filled,
+  accent,
+  filledTextColor,
+  onPress,
+  disabled,
+}: {
   day: string;
   filled: boolean;
-};
-
-type HabitTheme = {
-  iconBg: string;
   accent: string;
-  gradientStart: string;
-  gradientMid: string;
-  gradientEnd: string;
-};
-
-type HabitItem = {
-  title: string;
-  icon: keyof typeof MaterialCommunityIcons.glyphMap;
-  days: DayItem[];
-  theme: HabitTheme;
-  completionVariant: 'light' | 'dark';
-};
-
-const WEEK_DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-const habits: HabitItem[] = [
-  {
-    title: 'Read Book',
-    icon: 'book-open-page-variant-outline',
-    completionVariant: 'light',
-    theme: {
-      iconBg: '#5DA8E8',
-      accent: '#78BDF7',
-      gradientStart: 'rgba(23,60,96,0.88)',
-      gradientMid: 'rgba(8,19,34,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: [
-      { label: 'Sat', day: '02', filled: false },
-      { label: 'Sun', day: '03', filled: false },
-      { label: 'Mon', day: '04', filled: false },
-      { label: 'Tue', day: '05', filled: true },
-      { label: 'Wed', day: '06', filled: true },
-      { label: 'Thu', day: '07', filled: false },
-      { label: 'Fri', day: '08', filled: true },
-    ],
-  },
-  {
-    title: 'Go to Gym',
-    icon: 'dumbbell',
-    completionVariant: 'dark',
-    theme: {
-      iconBg: '#D2A12C',
-      accent: '#D8AA38',
-      gradientStart: 'rgba(73,52,16,0.88)',
-      gradientMid: 'rgba(28,20,6,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: [
-      { label: 'Sat', day: '02', filled: true },
-      { label: 'Sun', day: '03', filled: false },
-      { label: 'Mon', day: '04', filled: true },
-      { label: 'Tue', day: '05', filled: false },
-      { label: 'Wed', day: '06', filled: true },
-      { label: 'Thu', day: '07', filled: false },
-      { label: 'Fri', day: '08', filled: false },
-    ],
-  },
-  {
-    title: 'Homemade Food Only',
-    icon: 'silverware-fork-knife',
-    completionVariant: 'dark',
-    theme: {
-      iconBg: '#D67C50',
-      accent: '#E08A5C',
-      gradientStart: 'rgba(79,40,24,0.88)',
-      gradientMid: 'rgba(32,16,9,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: [
-      { label: 'Sat', day: '02', filled: false },
-      { label: 'Sun', day: '03', filled: false },
-      { label: 'Mon', day: '04', filled: true },
-      { label: 'Tue', day: '05', filled: true },
-      { label: 'Wed', day: '06', filled: false },
-      { label: 'Thu', day: '07', filled: true },
-      { label: 'Fri', day: '08', filled: false },
-    ],
-  },
-  {
-    title: 'Six Hours of Sleep',
-    icon: 'moon-waning-crescent',
-    completionVariant: 'light',
-    theme: {
-      iconBg: '#D86C8E',
-      accent: '#E784A3',
-      gradientStart: 'rgba(79,23,39,0.88)',
-      gradientMid: 'rgba(31,10,18,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: [
-      { label: 'Sat', day: '02', filled: false },
-      { label: 'Sun', day: '03', filled: false },
-      { label: 'Mon', day: '04', filled: false },
-      { label: 'Tue', day: '05', filled: true },
-      { label: 'Wed', day: '06', filled: false },
-      { label: 'Thu', day: '07', filled: false },
-      { label: 'Fri', day: '08', filled: true },
-    ],
-  },
-  {
-    title: 'Mindfulness Practices',
-    icon: 'leaf',
-    completionVariant: 'dark',
-    theme: {
-      iconBg: '#1FA052',
-      accent: '#2DB860',
-      gradientStart: 'rgba(12,63,31,0.90)',
-      gradientMid: 'rgba(7,24,12,0.93)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: [
-      { label: 'Sat', day: '02', filled: true },
-      { label: 'Sun', day: '03', filled: false },
-      { label: 'Mon', day: '04', filled: false },
-      { label: 'Tue', day: '05', filled: true },
-      { label: 'Wed', day: '06', filled: false },
-      { label: 'Thu', day: '07', filled: false },
-      { label: 'Fri', day: '08', filled: true },
-    ],
-  },
-];
-
-function DayCircle({ day, filled, accent }: { day: string; filled: boolean; accent: string }) {
+  filledTextColor: string;
+  onPress: () => void;
+  disabled: boolean;
+}) {
   return (
-    <View
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
       style={[
         styles.dayCircle,
         {
           borderColor: accent,
           backgroundColor: filled ? accent : 'transparent',
         },
+        disabled && styles.dayCircleDisabled,
       ]}>
-      <Text style={[styles.dayText, { color: filled ? '#EAF4FD' : 'rgba(255,255,255,0.84)' }]}>{day}</Text>
-    </View>
+      <Text style={[styles.dayText, { color: filled ? filledTextColor : 'rgba(255,255,255,0.84)' }]}>{day}</Text>
+    </Pressable>
   );
 }
 
-function HabitCard({ habit }: { habit: HabitItem }) {
-  const completionBg = habit.completionVariant === 'light' ? '#FFFFFF' : '#1B1B1D';
-  const checkColor = habit.completionVariant === 'light' ? habit.theme.accent : '#F3F3F4';
+function HabitCard({
+  habit,
+  onToggleToday,
+  onToggleDay,
+}: {
+  habit: HabitItem;
+  onToggleToday: (habitId: string) => void;
+  onToggleDay: (habitId: string, dayKey: (typeof WEEK_DAY_KEYS)[number]) => void;
+}) {
+  const { t } = useI18n();
+  const { resolvedTheme } = useAppTheme();
+  const todayKey = getTodayDayKey();
+  const todayEntry = habit.days.find((day) => day.key === todayKey);
+  const isScheduledToday = habit.scheduledDays.includes(todayKey);
+  const isCompletedToday = todayEntry?.filled ?? false;
+  const habitLabel = getHabitLabel(habit, t);
+  const iconColor = habit.theme.iconColor ?? '#F6F8FB';
+  const filledTextColor = habit.theme.onAccent ?? '#EAF4FD';
+  const completedCheckColor = habit.theme.accent === '#FFFFFF' ? '#121315' : habit.theme.accent;
+  const completionBg = isCompletedToday ? '#FFFFFF' : isScheduledToday ? '#151517' : '#111113';
+  const checkColor = isCompletedToday
+    ? completedCheckColor
+    : isScheduledToday
+      ? '#F3F3F4'
+      : 'rgba(255,255,255,0.32)';
+  const completionBorder = isCompletedToday
+    ? 'rgba(255,255,255,0.12)'
+    : isScheduledToday
+      ? habit.theme.accent
+      : 'rgba(255,255,255,0.06)';
 
   return (
     <View style={styles.cardWrap}>
@@ -168,106 +83,160 @@ function HabitCard({ habit }: { habit: HabitItem }) {
         style={[
           styles.card,
           {
-            backgroundColor: habit.theme.gradientMid,
-            borderColor: 'rgba(255,255,255,0.08)',
+            backgroundColor: '#050505',
+            borderColor: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(17,19,21,0.08)',
           },
         ]}>
+        <View style={[styles.cardGlow, { backgroundColor: habit.theme.iconBg }]} />
         <View style={[styles.cardShade, { backgroundColor: habit.theme.gradientStart }]} />
+        <View style={[styles.cardShadeMid, { backgroundColor: habit.theme.gradientMid }]} />
         <View style={[styles.cardShadeRight, { backgroundColor: habit.theme.gradientEnd }]} />
 
         <View style={styles.cardMain}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, { backgroundColor: habit.theme.iconBg }]}>
-              <MaterialCommunityIcons name={habit.icon} size={20} color="#F6F8FB" />
+              <MaterialCommunityIcons name={habit.icon} size={18} color={iconColor} />
             </View>
-            <Text style={styles.habitTitle}>{habit.title}</Text>
+            <Text style={styles.habitTitle}>{habitLabel}</Text>
           </View>
 
           <View style={styles.weekdayRow}>
-            {WEEK_DAYS.map((weekday) => (
+            {WEEK_DAY_KEYS.map((weekday) => (
               <Text key={weekday} style={styles.weekdayLabel}>
-                {weekday}
+                {t(`daysShort.${weekday}`)}
               </Text>
             ))}
           </View>
 
           <View style={styles.daysRow}>
             {habit.days.map((day) => (
-              <DayCircle key={`${habit.title}-${day.label}`} day={day.day} filled={day.filled} accent={habit.theme.accent} />
+              <DayCircle
+                key={`${habit.id}-${day.key}-${day.day}`}
+                day={day.day}
+                filled={day.filled}
+                accent={habit.theme.accent}
+                filledTextColor={filledTextColor}
+                disabled={!habit.scheduledDays.includes(day.key)}
+                onPress={() => onToggleDay(habit.id, day.key)}
+              />
             ))}
           </View>
         </View>
       </View>
 
-      <View style={[styles.completionButton, { backgroundColor: completionBg }]}>
-        <Ionicons name="checkmark" size={29} color={checkColor} />
-      </View>
+      <Pressable
+        onPress={() => onToggleToday(habit.id)}
+        style={[styles.completionButton, { backgroundColor: completionBg, borderColor: completionBorder }]}>
+        <Ionicons name={isScheduledToday ? 'checkmark' : 'remove'} size={25} color={checkColor} />
+      </Pressable>
     </View>
   );
 }
 
-function FloatingViewToggle() {
-  const [selected, setSelected] = useState<'week' | 'grid'>('week');
+export default function DeGrowScreen() {
+  const router = useRouter();
+  const { t } = useI18n();
+  const { colors, resolvedTheme } = useAppTheme();
+  const { habits, toggleHabitDay, toggleHabitToday } = useHabits();
+  const todayKey = getTodayDayKey();
 
-  const segments = useMemo(
-    () => [
-      { key: 'week' as const, label: 'Week View' },
-      { key: 'grid' as const, label: 'Grid View' },
-    ],
-    [],
+  const completedTodayCount = habits.filter((habit) => habit.days.find((day) => day.key === todayKey)?.filled).length;
+  const activeHabitsCount = habits.length;
+  const bestRun = Math.max(
+    0,
+    ...habits.map((habit) => {
+      let current = 0;
+      let best = 0;
+
+      for (const day of habit.days) {
+        if (day.filled) {
+          current += 1;
+          best = Math.max(best, current);
+        } else {
+          current = 0;
+        }
+      }
+
+      return best;
+    })
   );
 
-  return (
-    <View style={styles.toggleShell}>
-      <View style={styles.toggleInner}>
-        {segments.map((segment) => {
-          const isSelected = selected === segment.key;
-          const segmentStyle: ViewStyle = isSelected
-            ? styles.segmentSelected
-            : styles.segmentUnselected;
+  const handleToggleToday = (habitId: string) => {
+    const didToggle = toggleHabitToday(habitId);
 
-          return (
-            <Pressable
-              key={segment.key}
-              onPress={() => setSelected(segment.key)}
-              style={[styles.segmentButton, segmentStyle]}>
-              <Text style={[styles.segmentText, { color: isSelected ? '#1A1A1A' : '#F4F4F5' }]}>{segment.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
+    if (didToggle) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      return;
+    }
 
-export default function HabitStreakScreen() {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
+  const handleToggleDay = (habitId: string, dayKey: (typeof WEEK_DAY_KEYS)[number]) => {
+    const didToggle = toggleHabitDay(habitId, dayKey);
+
+    if (didToggle) {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      return;
+    }
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  };
+
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.safeArea}>
-      <StatusBar style="light" />
-      <View style={styles.screen}>
-        <View style={styles.header}>
-          <Text style={styles.screenTitle}>HabitStreak</Text>
-          <View style={styles.headerActions}>
-            <Pressable style={styles.iconAction}>
-              <Ionicons name="settings-outline" size={26} color="#F5F5F7" />
-            </Pressable>
-            <Pressable style={styles.iconAction}>
-              <Ionicons name="add" size={34} color="#F5F5F7" />
-            </Pressable>
+    <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
+      <View style={[styles.screen, { backgroundColor: colors.background }]}>
+        <View style={styles.contentColumn}>
+          <View style={styles.header}>
+            <Text style={[styles.screenTitle, { color: colors.text }]}>{t('appName')}</Text>
+            <View style={styles.headerActions}>
+              <Pressable onPress={() => router.push('/settings')} style={styles.iconAction}>
+                <Ionicons name="settings-outline" size={23} color={colors.icon} />
+              </Pressable>
+              <Pressable onPress={() => router.push('/new-habit')} style={styles.iconAction}>
+                <Ionicons name="add" size={30} color={colors.icon} />
+              </Pressable>
+            </View>
           </View>
-        </View>
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scrollContent}
-          bounces={false}>
-          {habits.map((habit) => (
-            <HabitCard key={habit.title} habit={habit} />
-          ))}
-        </ScrollView>
+          <ScrollView
+            style={styles.scrollView}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            bounces={false}>
+            <View style={[styles.summaryCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.summaryHeader}>
+                <Text style={[styles.summaryTitle, { color: colors.text }]}>{t('home.pulseTitle')}</Text>
+                <Text style={[styles.summarySubtitle, { color: colors.textMuted }]}>{t('home.pulseSubtitle')}</Text>
+              </View>
+              <View style={styles.summaryMetrics}>
+                <View style={[styles.summaryMetric, { backgroundColor: colors.surfaceAlt }]}>
+                  <Text style={[styles.summaryMetricValue, { color: colors.text }]}>{activeHabitsCount}</Text>
+                  <Text style={[styles.summaryMetricLabel, { color: colors.textMuted }]}>{t('home.activeHabits')}</Text>
+                </View>
+                <View style={[styles.summaryMetric, { backgroundColor: colors.surfaceAlt }]}>
+                  <Text style={[styles.summaryMetricValue, { color: colors.text }]}>{completedTodayCount}</Text>
+                  <Text style={[styles.summaryMetricLabel, { color: colors.textMuted }]}>
+                    {t('home.completedToday')}
+                  </Text>
+                </View>
+                <View style={[styles.summaryMetric, { backgroundColor: colors.surfaceAlt }]}>
+                  <Text style={[styles.summaryMetricValue, { color: colors.text }]}>{bestRun}</Text>
+                  <Text style={[styles.summaryMetricLabel, { color: colors.textMuted }]}>{t('home.bestRun')}</Text>
+                </View>
+              </View>
+            </View>
 
-        <View style={styles.toggleOverlay}>
-          <FloatingViewToggle />
+            {habits.map((habit) => (
+              <HabitCard
+                key={habit.id}
+                habit={habit}
+                onToggleToday={handleToggleToday}
+                onToggleDay={handleToggleDay}
+              />
+            ))}
+          </ScrollView>
         </View>
       </View>
     </SafeAreaView>
@@ -282,97 +251,176 @@ const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#000000',
-    paddingHorizontal: 24,
-    paddingTop: 10,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  contentColumn: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 360,
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 18,
+    paddingHorizontal: 2,
   },
   screenTitle: {
     color: '#F5F5F7',
-    fontSize: 42 / 2,
+    fontSize: 19,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -0.45,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   iconAction: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    gap: 18,
-    paddingBottom: 168,
+    gap: 14,
+    paddingBottom: 104,
+  },
+  summaryCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: '#0C0C0D',
+    padding: 16,
+    gap: 14,
+  },
+  summaryHeader: {
+    gap: 4,
+  },
+  summaryTitle: {
+    color: '#F5F5F7',
+    fontSize: 16.5,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  summarySubtitle: {
+    color: 'rgba(255,255,255,0.56)',
+    fontSize: 12.5,
+    lineHeight: 18,
+  },
+  summaryMetrics: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  summaryMetric: {
+    flex: 1,
+    borderRadius: 18,
+    backgroundColor: '#121214',
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+  },
+  summaryMetricValue: {
+    color: '#F5F5F7',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+  },
+  summaryMetricLabel: {
+    marginTop: 6,
+    color: 'rgba(255,255,255,0.56)',
+    fontSize: 11.5,
+    fontWeight: '600',
   },
   cardWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    gap: 12,
   },
   card: {
     flex: 1,
-    borderRadius: 23,
-    paddingHorizontal: 16,
-    paddingVertical: 15,
+    borderRadius: 21,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
     overflow: 'hidden',
     borderWidth: 1,
+    shadowColor: '#000000',
+    shadowOpacity: 0.18,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
+  },
+  cardGlow: {
+    position: 'absolute',
+    width: 112,
+    height: 112,
+    borderRadius: 999,
+    left: -20,
+    top: -34,
+    opacity: 0.18,
   },
   cardShade: {
     position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    width: '55%',
-    opacity: 0.95,
+    left: -18,
+    top: -10,
+    bottom: -10,
+    width: '58%',
+    opacity: 0.78,
+    transform: [{ skewX: '-12deg' }],
+  },
+  cardShadeMid: {
+    position: 'absolute',
+    left: '38%',
+    top: -6,
+    bottom: -6,
+    width: '26%',
+    opacity: 0.46,
+    transform: [{ skewX: '-10deg' }],
   },
   cardShadeRight: {
     position: 'absolute',
-    right: 0,
+    right: -8,
     top: 0,
     bottom: 0,
-    width: '44%',
-    opacity: 0.9,
+    width: '36%',
+    opacity: 0.66,
   },
   cardMain: {
     zIndex: 2,
-    gap: 9,
+    gap: 7,
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   iconBox: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   habitTitle: {
     color: '#F5F5F7',
-    fontSize: 33 / 2,
+    flexShrink: 1,
+    fontSize: 15.5,
     fontWeight: '600',
-    letterSpacing: -0.2,
+    letterSpacing: -0.24,
   },
   weekdayRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 1,
   },
   weekdayLabel: {
     color: 'rgba(255,255,255,0.72)',
-    width: 33,
+    width: 29,
     textAlign: 'center',
-    fontSize: 11.5,
+    fontSize: 10.5,
     fontWeight: '500',
   },
   daysRow: {
@@ -380,62 +428,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   dayCircle: {
-    width: 33,
-    height: 33,
-    borderRadius: 16.5,
+    width: 29,
+    height: 29,
+    borderRadius: 14.5,
     borderWidth: 1.6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   dayText: {
-    fontSize: 12.5,
+    fontSize: 11.5,
     fontWeight: '500',
     letterSpacing: -0.1,
   },
+  dayCircleDisabled: {
+    opacity: 0.5,
+  },
   completionButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  toggleOverlay: {
-    position: 'absolute',
-    bottom: 16,
-    left: 24,
-    right: 24,
-    alignItems: 'center',
-  },
-  toggleShell: {
-    borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    padding: 6,
-  },
-  toggleInner: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(10,10,10,0.2)',
-    borderRadius: 999,
-    gap: 6,
-  },
-  segmentButton: {
-    minWidth: 138,
-    height: 52,
-    borderRadius: 999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  segmentSelected: {
-    backgroundColor: '#F1F1F2',
-  },
-  segmentUnselected: {
-    backgroundColor: 'rgba(0,0,0,0.35)',
-  },
-  segmentText: {
-    fontSize: 33 / 2,
-    fontWeight: '600',
-    letterSpacing: -0.25,
   },
 });
