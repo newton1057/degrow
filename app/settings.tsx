@@ -7,6 +7,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { useI18n, type AppLanguage } from '@/providers/language-provider';
 import { useAppTheme, type ThemePreference } from '@/providers/theme-provider';
+import { useAuth } from '@/providers/auth-provider';
 
 type SettingToggleRowProps = {
   description?: string;
@@ -128,6 +129,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
   const { colors, resolvedTheme, themePreference, setThemePreference } = useAppTheme();
+  const { signOut } = useAuth();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [habitRemindersEnabled, setHabitRemindersEnabled] = useState(true);
   const [hapticsEnabled, setHapticsEnabled] = useState(true);
@@ -262,6 +264,18 @@ export default function SettingsScreen() {
                 value={t('settings.values.review')}
               />
             </Section>
+
+            <Pressable
+              onPress={signOut}
+              style={({ pressed }) => [
+                styles.signOutButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+                pressed && { opacity: 0.7 }
+              ]}
+            >
+              <MaterialCommunityIcons name="logout" size={20} color="#FF453A" />
+              <Text style={styles.signOutText}>{t('auth.signOut')}</Text>
+            </Pressable>
           </ScrollView>
         </View>
       </View>
@@ -447,5 +461,20 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     marginVertical: 2,
+  },
+  signOutButton: {
+    marginTop: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  signOutText: {
+    color: '#FF453A',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

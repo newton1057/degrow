@@ -1,9 +1,11 @@
 import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  Modal,
+  FlatList,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,6 +16,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import BottomSheet, { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+
 
 import { WEEK_DAY_KEYS } from '@/constants/habits';
 import { useHabits } from '@/providers/habits-provider';
@@ -22,7 +27,14 @@ import { useAppTheme } from '@/providers/theme-provider';
 
 const previewDates = ['02', '03', '04', '05', '06', '07', '08'];
 const REMINDER_DAY_MINUTES = 24 * 60;
-const REMINDER_MINUTE_STEP = 15;
+
+const WHEEL_ITEM_HEIGHT = 50;
+const WHEEL_VISIBLE_ITEMS = 5;
+const WHEEL_HEIGHT = WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS;
+
+const HOURS_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
+const MINUTES_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i * 5, label: String(i * 5).padStart(2, '0') }));
+const PERIOD_DATA = [{ value: 'AM' as const, label: 'a.m.' }, { value: 'PM' as const, label: 'p.m.' }];
 
 const iconOptions: (keyof typeof MaterialCommunityIcons.glyphMap)[] = [
   'book-open-page-variant-outline',
@@ -154,6 +166,151 @@ const themeOptions = [
   },
 ];
 
+/* ─── iOS-style scroll wheel column ─── */
+
+type WheelItem<T> = { value: T; label: string };
+
+function WheelColumn<T extends string | number>({
+  data,
+  selectedValue,
+  onValueChange,
+  textColor,
+  accentColor,
+}: {
+  data: WheelItem<T>[];
+  selectedValue: T;
+  onValueChange: (value: T) => void;
+  textColor: string;
+  accentColor: string;
+}) {
+  const flatListRef = useRef<FlatList>(null);
+  const lastSnappedIndex = useRef(-1);
+  const isUserScrolling = useRef(false);
+
+  const selectedIndex = data.findIndex((item) => item.value === selectedValue);
+  const paddingItems = Math.floor(WHEEL_VISIBLE_ITEMS / 2);
+
+  // Build the padded list: empty items at top/bottom so items can scroll to center
+  const paddedData: (WheelItem<T> | null)[] = [
+    ...Array(paddingItems).fill(null),
+    ...data,
+    ...Array(paddingItems).fill(null),
+  ];
+
+  // Scroll to current value on mount and when selectedValue changes externally
+  useEffect(() => {
+    if (selectedIndex >= 0 && !isUserScrolling.current) {
+      const offset = selectedIndex * WHEEL_ITEM_HEIGHT;
+      flatListRef.current?.scrollToOffset({ offset, animated: false });
+      lastSnappedIndex.current = selectedIndex;
+    }
+  }, [selectedIndex]);
+
+  const handleMomentumEnd = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      isUserScrolling.current = false;
+      const offsetY = event.nativeEvent.contentOffset.y;
+      let index = Math.round(offsetY / WHEEL_ITEM_HEIGHT);
+      index = Math.max(0, Math.min(index, data.length - 1));
+
+      if (index !== lastSnappedIndex.current) {
+        lastSnappedIndex.current = index;
+        onValueChange(data[index].value);
+        void Haptics.selectionAsync();
+      }
+    },
+    [data, onValueChange],
+  );
+
+  const handleScrollBeginDrag = useCallback(() => {
+    isUserScrolling.current = true;
+  }, []);
+
+  const getItemLayout = useCallback(
+    (_: unknown, index: number) => ({
+      length: WHEEL_ITEM_HEIGHT,
+      offset: WHEEL_ITEM_HEIGHT * index,
+      index,
+    }),
+    [],
+  );
+
+  const renderItem = useCallback(
+    ({ item, index }: { item: WheelItem<T> | null; index: number }) => {
+      if (!item) {
+        return <View style={{ height: WHEEL_ITEM_HEIGHT }} />;
+      }
+      const dataIndex = index - paddingItems;
+      const isSelected = dataIndex === selectedIndex;
+
+      return (
+        <View style={[wheelStyles.item, { height: WHEEL_ITEM_HEIGHT }]}>
+          <Text
+            style={[
+              wheelStyles.itemText,
+              { color: isSelected ? accentColor : textColor },
+              isSelected && wheelStyles.itemTextSelected,
+              !isSelected && wheelStyles.itemTextDimmed,
+            ]}>
+            {item.label}
+          </Text>
+        </View>
+      );
+    },
+    [selectedIndex, accentColor, textColor, paddingItems],
+  );
+
+  const keyExtractor = useCallback(
+    (item: WheelItem<T> | null, index: number) =>
+      item ? `${item.value}` : `pad-${index}`,
+    [],
+  );
+
+  return (
+    <View style={[wheelStyles.column, { height: WHEEL_HEIGHT }]}>
+      <FlatList
+        ref={flatListRef}
+        data={paddedData}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        getItemLayout={getItemLayout}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={WHEEL_ITEM_HEIGHT}
+        decelerationRate="fast"
+        onMomentumScrollEnd={handleMomentumEnd}
+        onScrollBeginDrag={handleScrollBeginDrag}
+        bounces={false}
+        overScrollMode="never"
+        nestedScrollEnabled
+      />
+    </View>
+  );
+}
+
+const wheelStyles = StyleSheet.create({
+  column: {
+    flex: 1,
+    overflow: 'hidden',
+  },
+  item: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemText: {
+    fontSize: 24,
+    fontWeight: '300',
+    letterSpacing: -0.3,
+  },
+  itemTextSelected: {
+    fontWeight: '600',
+  },
+  itemTextDimmed: {
+    opacity: 0.4,
+  },
+});
+
+/* ─── Section component ─── */
+
 function Section({ children, eyebrow, title }: { children: ReactNode; eyebrow: string; title: string }) {
   const { colors } = useAppTheme();
 
@@ -185,18 +342,26 @@ export default function NewHabitScreen() {
   const { colors, resolvedTheme } = useAppTheme();
   const { addHabit } = useHabits();
   const defaultHabitName = t('newHabit.defaults.habitName');
-  const [habitName, setHabitName] = useState(DEFAULT_HABIT_NAME_VALUES[0]);
+  const [habitName, setHabitName] = useState<string>(DEFAULT_HABIT_NAME_VALUES[0]);
   const [selectedIcon, setSelectedIcon] =
     useState<keyof typeof MaterialCommunityIcons.glyphMap>('book-open-page-variant-outline');
   const [selectedThemeId, setSelectedThemeId] = useState('blue');
   const [reminderEnabled, setReminderEnabled] = useState(true);
-  const [reminderSheetVisible, setReminderSheetVisible] = useState(false);
   const [reminderMinutes, setReminderMinutes] = useState(19 * 60);
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+  const snapPoints = useMemo(() => ['52%'], []);
   const [selectedDays, setSelectedDays] = useState([true, false, true, true, false, true, false]);
 
   const selectedTheme = themeOptions.find((theme) => theme.id === selectedThemeId) ?? themeOptions[0];
   const accentForeground = selectedTheme.onAccent ?? '#F6F9FE';
-  const previewIconColor = selectedTheme.iconColor ?? '#F7F8FB';
+  const isLight = resolvedTheme === 'light';
+  const previewIconColor = selectedTheme.iconColor ?? (isLight ? '#FFFFFF' : '#F7F8FB');
+  const previewFilledTextColor = selectedTheme.onAccent ?? (isLight ? '#FFFFFF' : '#EAF4FD');
+  const previewEmptyTextColor = isLight ? colors.textMuted : 'rgba(255,255,255,0.84)';
+  
+  const shadeStart = isLight ? `${selectedTheme.iconBg}25` : selectedTheme.gradientStart;
+  const shadeMid = isLight ? `${selectedTheme.iconBg}10` : selectedTheme.gradientMid;
+  const shadeEnd = isLight ? 'transparent' : selectedTheme.gradientEnd;
   const reminderParts = getReminderParts(reminderMinutes);
   const selectedScheduledDays = WEEK_DAY_KEYS.filter((_, index) => selectedDays[index]);
   const canCreateHabit = habitName.trim().length > 0 && selectedScheduledDays.length > 0;
@@ -205,35 +370,51 @@ export default function NewHabitScreen() {
     `newHabit.time.${reminderParts.period.toLowerCase()}`
   )}`;
 
+  // Wheel-local state: work on copies until confirmed
+  const [wheelHour, setWheelHour] = useState(0);
+  const [wheelMinute, setWheelMinute] = useState(0);
+  const [wheelPeriod, setWheelPeriod] = useState<'AM' | 'PM'>('AM');
+
+  const openReminderSheet = useCallback(() => {
+    const parts = getReminderParts(reminderMinutes);
+    setWheelHour(Number(parts.hour));
+    const rawMin = reminderMinutes % 60;
+    setWheelMinute(Math.round(rawMin / 5) * 5 % 60);
+    setWheelPeriod(parts.period as 'AM' | 'PM');
+    bottomSheetRef.current?.present();
+  }, [reminderMinutes]);
+
+  const closeReminderSheet = useCallback(() => {
+    bottomSheetRef.current?.dismiss();
+  }, []);
+
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} pressBehavior="close" opacity={0.6} />
+    ),
+    [],
+  );
+
+  const confirmWheelTime = useCallback(() => {
+    let hours24 = wheelHour % 12;
+    if (wheelPeriod === 'PM') hours24 += 12;
+    setReminderMinutes(hours24 * 60 + wheelMinute);
+    bottomSheetRef.current?.dismiss();
+  }, [wheelHour, wheelMinute, wheelPeriod]);
+
   useEffect(() => {
-    setHabitName((current) => (DEFAULT_HABIT_NAME_VALUES.includes(current) ? defaultHabitName : current));
+    setHabitName((current) => (DEFAULT_HABIT_NAME_VALUES.includes(current as typeof DEFAULT_HABIT_NAME_VALUES[number]) ? defaultHabitName : current));
   }, [defaultHabitName]);
 
   const toggleDay = (index: number) => {
     setSelectedDays((current) => current.map((value, currentIndex) => (currentIndex === index ? !value : value)));
   };
 
-  const shiftReminderTime = (delta: number) => {
-    setReminderMinutes((current) => (current + delta + REMINDER_DAY_MINUTES) % REMINDER_DAY_MINUTES);
-  };
-
-  const setReminderPeriod = (period: 'AM' | 'PM') => {
-    setReminderMinutes((current) => {
-      const isPm = current >= 12 * 60;
-
-      if ((period === 'PM') === isPm) {
-        return current;
-      }
-
-      return (current + 12 * 60) % REMINDER_DAY_MINUTES;
-    });
-  };
-
   const handleReminderToggle = (value: boolean) => {
     setReminderEnabled(value);
 
     if (!value) {
-      setReminderSheetVisible(false);
+      bottomSheetRef.current?.dismiss();
     }
   };
 
@@ -283,25 +464,31 @@ export default function NewHabitScreen() {
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-            <View style={styles.previewCard}>
-              <View style={[styles.previewGlow, { backgroundColor: selectedTheme.iconBg }]} />
-              <View style={[styles.previewShade, { backgroundColor: selectedTheme.gradientStart }]} />
-              <View style={[styles.previewShadeMid, { backgroundColor: selectedTheme.gradientMid }]} />
-              <View style={[styles.previewShadeRight, { backgroundColor: selectedTheme.gradientEnd }]} />
+            <View style={[
+              styles.previewCard,
+              {
+                backgroundColor: isLight ? colors.surface : '#050505',
+                borderColor: isLight ? colors.border : 'rgba(255,255,255,0.08)',
+              }
+            ]}>
+              <View style={[styles.previewGlow, { backgroundColor: selectedTheme.iconBg, opacity: isLight ? 0.08 : 0.18 }]} />
+              <View style={[styles.previewShade, { backgroundColor: shadeStart }]} />
+              <View style={[styles.previewShadeMid, { backgroundColor: shadeMid }]} />
+              <View style={[styles.previewShadeRight, { backgroundColor: shadeEnd }]} />
 
               <View style={styles.previewMain}>
                 <View style={styles.previewTitleRow}>
                   <View style={[styles.previewIconBox, { backgroundColor: selectedTheme.iconBg }]}>
                     <MaterialCommunityIcons name={selectedIcon} size={18} color={previewIconColor} />
                   </View>
-                  <Text style={styles.previewTitle} numberOfLines={1}>
+                  <Text style={[styles.previewTitle, { color: colors.text }]} numberOfLines={1}>
                     {habitName.trim() || t('newHabit.previewFallback')}
                   </Text>
                 </View>
 
                 <View style={styles.previewWeekdayRow}>
                   {WEEK_DAY_KEYS.map((weekday) => (
-                    <Text key={weekday} style={styles.previewWeekdayLabel}>
+                    <Text key={weekday} style={[styles.previewWeekdayLabel, { color: isLight ? colors.textMuted : 'rgba(255,255,255,0.72)' }]}>
                       {t(`daysShort.${weekday}`)}
                     </Text>
                   ))}
@@ -324,7 +511,7 @@ export default function NewHabitScreen() {
                         <Text
                           style={[
                             styles.previewDayText,
-                            { color: filled ? accentForeground : 'rgba(255,255,255,0.84)' },
+                            { color: filled ? previewFilledTextColor : previewEmptyTextColor },
                           ]}>
                           {date}
                         </Text>
@@ -443,7 +630,7 @@ export default function NewHabitScreen() {
 
               {reminderEnabled ? (
                 <Pressable
-                  onPress={() => setReminderSheetVisible(true)}
+                  onPress={openReminderSheet}
                   style={[styles.reminderTimeTrigger, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
                   <View>
                     <Text style={[styles.reminderTimeTriggerLabel, { color: colors.text }]}>
@@ -482,99 +669,103 @@ export default function NewHabitScreen() {
         </View>
       </View>
 
-      <Modal
-        animationType="slide"
-        transparent
-        visible={reminderSheetVisible}
-        onRequestClose={() => setReminderSheetVisible(false)}>
-        <View style={[styles.bottomSheetBackdrop, { backgroundColor: colors.overlay }]}>
-          <Pressable style={styles.bottomSheetDismissArea} onPress={() => setReminderSheetVisible(false)} />
-          <View style={[styles.bottomSheetPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={[styles.bottomSheetHandle, { backgroundColor: colors.textDim }]} />
+      {/* ─── iOS-style wheel time picker bottom sheet ─── */}
+      <BottomSheetModal
+        ref={bottomSheetRef}
+        snapPoints={snapPoints}
+        enablePanDownToClose
+        enableDynamicSizing={false}
+        backdropComponent={renderBackdrop}
+        backgroundStyle={[styles.bottomSheetPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}
+        handleIndicatorStyle={[styles.bottomSheetHandle, { backgroundColor: colors.textDim }]}>
+        <BottomSheetView style={styles.bottomSheetContent}>
+          <View style={styles.bottomSheetHeader}>
+            <Text style={[styles.bottomSheetTitle, { color: colors.text }]}>{t('newHabit.reminder.bottomSheetTitle')}</Text>
+            <Text style={[styles.bottomSheetSubtitle, { color: colors.textMuted }]}>
+              {t('newHabit.reminder.bottomSheetSubtitle')}
+            </Text>
+          </View>
 
-            <View style={styles.bottomSheetHeader}>
-              <Text style={[styles.bottomSheetTitle, { color: colors.text }]}>{t('newHabit.reminder.bottomSheetTitle')}</Text>
-              <Text style={[styles.bottomSheetSubtitle, { color: colors.textMuted }]}>
-                {t('newHabit.reminder.bottomSheetSubtitle')}
-              </Text>
+          {/* Wheel picker area */}
+          <View style={styles.wheelPickerContainer}>
+            {/* Selection highlight band */}
+            <View
+              style={[
+                styles.wheelSelectionBand,
+                {
+                  backgroundColor: resolvedTheme === 'dark'
+                    ? 'rgba(255,255,255,0.07)'
+                    : 'rgba(0,0,0,0.06)',
+                  top: WHEEL_ITEM_HEIGHT * Math.floor(WHEEL_VISIBLE_ITEMS / 2),
+                  height: WHEEL_ITEM_HEIGHT,
+                },
+              ]}
+            />
+
+            {/* Hour column */}
+            <WheelColumn
+              data={HOURS_DATA}
+              selectedValue={wheelHour}
+              onValueChange={setWheelHour}
+              textColor={colors.text}
+              accentColor={colors.text}
+            />
+
+            {/* Colon separator */}
+            <View style={styles.wheelSeparator}>
+              <Text style={[styles.wheelSeparatorText, { color: colors.text }]}>:</Text>
             </View>
 
-            <View style={styles.reminderTimeControls}>
-              <View style={styles.timeUnit}>
-                <Pressable
-                  onPress={() => shiftReminderTime(-60)}
-                  style={[styles.timeStepButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Ionicons name="chevron-up" size={15} color={colors.icon} />
-                </Pressable>
-                <View style={[styles.timeValueChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Text style={[styles.timeValueText, { color: colors.text }]}>{reminderParts.hour}</Text>
-                </View>
-                <Pressable
-                  onPress={() => shiftReminderTime(60)}
-                  style={[styles.timeStepButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Ionicons name="chevron-down" size={15} color={colors.icon} />
-                </Pressable>
-                <Text style={[styles.timeUnitCaption, { color: colors.textSoft }]}>{t('newHabit.time.hour')}</Text>
-              </View>
+            {/* Minute column */}
+            <WheelColumn
+              data={MINUTES_DATA}
+              selectedValue={wheelMinute}
+              onValueChange={setWheelMinute}
+              textColor={colors.text}
+              accentColor={colors.text}
+            />
 
-              <Text style={[styles.timeSeparator, { color: colors.textMuted }]}>:</Text>
+            {/* AM / PM column */}
+            <WheelColumn
+              data={PERIOD_DATA}
+              selectedValue={wheelPeriod}
+              onValueChange={setWheelPeriod as (v: string) => void}
+              textColor={colors.text}
+              accentColor={colors.text}
+            />
 
-              <View style={styles.timeUnit}>
-                <Pressable
-                  onPress={() => shiftReminderTime(-REMINDER_MINUTE_STEP)}
-                  style={[styles.timeStepButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Ionicons name="chevron-up" size={15} color={colors.icon} />
-                </Pressable>
-                <View style={[styles.timeValueChip, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Text style={[styles.timeValueText, { color: colors.text }]}>{reminderParts.minute}</Text>
-                </View>
-                <Pressable
-                  onPress={() => shiftReminderTime(REMINDER_MINUTE_STEP)}
-                  style={[styles.timeStepButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                  <Ionicons name="chevron-down" size={15} color={colors.icon} />
-                </Pressable>
-                <Text style={[styles.timeUnitCaption, { color: colors.textSoft }]}>{t('newHabit.time.minute')}</Text>
-              </View>
-
-              <View style={styles.periodToggle}>
-                {(['AM', 'PM'] as const).map((period) => {
-                  const active = reminderParts.period === period;
-
-                  return (
-                    <Pressable
-                      key={period}
-                      onPress={() => setReminderPeriod(period)}
-                      style={[
-                        styles.periodChip,
-                        { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
-                        active && { backgroundColor: selectedTheme.accent, borderColor: selectedTheme.accent },
-                      ]}>
-                      <Text style={[styles.periodChipText, { color: colors.textSecondary }, active && { color: accentForeground }]}>
-                        {t(`newHabit.time.${period.toLowerCase()}`)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+            {/* Top fade overlay */}
+            <View style={styles.wheelFadeTop} pointerEvents="none">
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.95 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.7 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.35 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.1 }]} />
             </View>
-
-            <View style={styles.bottomSheetActions}>
-              <Pressable
-                onPress={() => setReminderSheetVisible(false)}
-                style={[styles.bottomSheetSecondaryButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
-                <Text style={[styles.bottomSheetSecondaryText, { color: colors.text }]}>{t('newHabit.buttons.cancel')}</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setReminderSheetVisible(false)}
-                style={[styles.bottomSheetPrimaryButton, { backgroundColor: selectedTheme.accent }]}>
-                <Text style={[styles.bottomSheetPrimaryText, { color: accentForeground }]}>
-                  {t('newHabit.buttons.done')}
-                </Text>
-              </Pressable>
+            {/* Bottom fade overlay */}
+            <View style={styles.wheelFadeBottom} pointerEvents="none">
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.1 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.35 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.7 }]} />
+              <View style={[styles.wheelFadeStrip, { backgroundColor: colors.surface, opacity: 0.95 }]} />
             </View>
           </View>
-        </View>
-      </Modal>
+
+          <View style={styles.bottomSheetActions}>
+            <Pressable
+              onPress={closeReminderSheet}
+              style={[styles.bottomSheetSecondaryButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+              <Text style={[styles.bottomSheetSecondaryText, { color: colors.text }]}>{t('newHabit.buttons.cancel')}</Text>
+            </Pressable>
+            <Pressable
+              onPress={confirmWheelTime}
+              style={[styles.bottomSheetPrimaryButton, { backgroundColor: selectedTheme.accent }]}>
+              <Text style={[styles.bottomSheetPrimaryText, { color: accentForeground }]}>
+                {t('newHabit.buttons.done')}
+              </Text>
+            </Pressable>
+          </View>
+        </BottomSheetView>
+      </BottomSheetModal>
     </SafeAreaView>
   );
 }
@@ -864,22 +1055,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.2,
   },
-  bottomSheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.58)',
-    justifyContent: 'flex-end',
-  },
-  bottomSheetDismissArea: {
-    flex: 1,
-  },
   bottomSheetPanel: {
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 0,
     backgroundColor: '#111113',
+  },
+  bottomSheetContent: {
     paddingHorizontal: 18,
-    paddingTop: 10,
     paddingBottom: 28,
     gap: 18,
   },
@@ -904,74 +1085,50 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     lineHeight: 19,
   },
-  reminderTimeControls: {
+  /* ─── Wheel picker styles ─── */
+  wheelPickerContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 8,
-  },
-  timeUnit: {
     alignItems: 'center',
-    gap: 6,
-    flex: 1,
+    height: WHEEL_HEIGHT,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  timeStepButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#17171A',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  timeValueChip: {
-    minWidth: 58,
-    height: 42,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#17171A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  timeValueText: {
-    color: '#F5F5F7',
-    fontSize: 17,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  timeUnitCaption: {
-    color: 'rgba(255,255,255,0.46)',
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  timeSeparator: {
-    marginTop: 34,
-    color: 'rgba(255,255,255,0.62)',
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  periodToggle: {
-    gap: 8,
-    paddingTop: 1,
-  },
-  periodChip: {
-    minWidth: 58,
-    height: 34,
+  wheelSelectionBand: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    backgroundColor: '#17171A',
+    zIndex: 0,
+  },
+  wheelSeparator: {
+    width: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    height: WHEEL_HEIGHT,
   },
-  periodChipText: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 12.5,
-    fontWeight: '700',
+  wheelSeparatorText: {
+    fontSize: 24,
+    fontWeight: '600',
+    marginTop: -2,
+  },
+  wheelFadeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: WHEEL_ITEM_HEIGHT * 1.2,
+    zIndex: 10,
+  },
+  wheelFadeBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: WHEEL_ITEM_HEIGHT * 1.2,
+    zIndex: 10,
+  },
+  wheelFadeStrip: {
+    flex: 1,
   },
   bottomSheetActions: {
     flexDirection: 'row',

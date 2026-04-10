@@ -19,6 +19,7 @@ function DayCircle({
   filled,
   accent,
   filledTextColor,
+  emptyTextColor,
   onPress,
   disabled,
 }: {
@@ -26,6 +27,7 @@ function DayCircle({
   filled: boolean;
   accent: string;
   filledTextColor: string;
+  emptyTextColor: string;
   onPress: () => void;
   disabled: boolean;
 }) {
@@ -37,11 +39,10 @@ function DayCircle({
         styles.dayCircle,
         {
           borderColor: accent,
-          backgroundColor: filled ? accent : 'transparent',
         },
         disabled && styles.dayCircleDisabled,
       ]}>
-      <Text style={[styles.dayText, { color: filled ? filledTextColor : 'rgba(255,255,255,0.84)' }]}>{day}</Text>
+      <Text style={[styles.dayText, { color: filled ? filledTextColor : emptyTextColor }]}>{day}</Text>
     </Pressable>
   );
 }
@@ -56,26 +57,40 @@ function HabitCard({
   onToggleDay: (habitId: string, dayKey: (typeof WEEK_DAY_KEYS)[number]) => void;
 }) {
   const { t } = useI18n();
-  const { resolvedTheme } = useAppTheme();
+  const { colors, resolvedTheme } = useAppTheme();
   const todayKey = getTodayDayKey();
   const todayEntry = habit.days.find((day) => day.key === todayKey);
   const isScheduledToday = habit.scheduledDays.includes(todayKey);
   const isCompletedToday = todayEntry?.filled ?? false;
   const habitLabel = getHabitLabel(habit, t);
-  const iconColor = habit.theme.iconColor ?? '#F6F8FB';
-  const filledTextColor = habit.theme.onAccent ?? '#EAF4FD';
-  const completedCheckColor = habit.theme.accent === '#FFFFFF' ? '#121315' : habit.theme.accent;
-  const completionBg = isCompletedToday ? '#FFFFFF' : isScheduledToday ? '#151517' : '#111113';
+  const isLight = resolvedTheme === 'light';
+
+  const iconColor = habit.theme.iconColor ?? (isLight ? '#FFFFFF' : '#F6F8FB');
+  const filledTextColor = habit.theme.onAccent ?? (isLight ? '#FFFFFF' : '#EAF4FD');
+  const completedCheckColor = habit.theme.accent === '#FFFFFF' ? (isLight ? colors.background : '#121315') : habit.theme.accent;
+  
+  const completionBg = isCompletedToday 
+    ? (isLight ? colors.text : '#FFFFFF') 
+    : isScheduledToday 
+      ? (isLight ? colors.surfaceAlt : '#151517') 
+      : (isLight ? colors.surface : '#111113');
+      
   const checkColor = isCompletedToday
     ? completedCheckColor
     : isScheduledToday
-      ? '#F3F3F4'
-      : 'rgba(255,255,255,0.32)';
+      ? (isLight ? colors.textSoft : '#F3F3F4')
+      : (isLight ? colors.border : 'rgba(255,255,255,0.32)');
+      
   const completionBorder = isCompletedToday
-    ? 'rgba(255,255,255,0.12)'
+    ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)')
     : isScheduledToday
       ? habit.theme.accent
-      : 'rgba(255,255,255,0.06)';
+      : (isLight ? colors.border : 'rgba(255,255,255,0.06)');
+
+  // Dynamic light mode gradient fallbacks
+  const shadeStart = isLight ? `${habit.theme.iconBg}25` : habit.theme.gradientStart;
+  const shadeMid = isLight ? `${habit.theme.iconBg}10` : habit.theme.gradientMid;
+  const shadeEnd = isLight ? 'transparent' : habit.theme.gradientEnd;
 
   return (
     <View style={styles.cardWrap}>
@@ -83,26 +98,26 @@ function HabitCard({
         style={[
           styles.card,
           {
-            backgroundColor: '#050505',
-            borderColor: resolvedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(17,19,21,0.08)',
+            backgroundColor: isLight ? colors.surface : '#050505',
+            borderColor: isLight ? colors.border : 'rgba(255,255,255,0.08)',
           },
         ]}>
-        <View style={[styles.cardGlow, { backgroundColor: habit.theme.iconBg }]} />
-        <View style={[styles.cardShade, { backgroundColor: habit.theme.gradientStart }]} />
-        <View style={[styles.cardShadeMid, { backgroundColor: habit.theme.gradientMid }]} />
-        <View style={[styles.cardShadeRight, { backgroundColor: habit.theme.gradientEnd }]} />
+        <View style={[styles.cardGlow, { backgroundColor: habit.theme.iconBg, opacity: isLight ? 0.08 : 0.18 }]} />
+        <View style={[styles.cardShade, { backgroundColor: shadeStart }]} />
+        <View style={[styles.cardShadeMid, { backgroundColor: shadeMid }]} />
+        <View style={[styles.cardShadeRight, { backgroundColor: shadeEnd }]} />
 
         <View style={styles.cardMain}>
           <View style={styles.titleRow}>
             <View style={[styles.iconBox, { backgroundColor: habit.theme.iconBg }]}>
               <MaterialCommunityIcons name={habit.icon} size={18} color={iconColor} />
             </View>
-            <Text style={styles.habitTitle}>{habitLabel}</Text>
+            <Text style={[styles.habitTitle, { color: colors.text }]}>{habitLabel}</Text>
           </View>
 
           <View style={styles.weekdayRow}>
             {WEEK_DAY_KEYS.map((weekday) => (
-              <Text key={weekday} style={styles.weekdayLabel}>
+              <Text key={weekday} style={[styles.weekdayLabel, { color: isLight ? colors.textMuted : 'rgba(255,255,255,0.72)' }]}>
                 {t(`daysShort.${weekday}`)}
               </Text>
             ))}
@@ -116,6 +131,7 @@ function HabitCard({
                 filled={day.filled}
                 accent={habit.theme.accent}
                 filledTextColor={filledTextColor}
+                emptyTextColor={isLight ? colors.textMuted : 'rgba(255,255,255,0.84)'}
                 disabled={!habit.scheduledDays.includes(day.key)}
                 onPress={() => onToggleDay(habit.id, day.key)}
               />
