@@ -22,11 +22,13 @@ type CreateHabitInput = {
   scheduledDays: DayKey[];
   reminderEnabled: boolean;
   reminderMinutes: number;
+  targetMinutes: number;
 };
 
 type HabitsContextValue = {
   habits: HabitItem[];
   addHabit: (input: CreateHabitInput) => HabitItem;
+  completeHabitToday: (habitId: string) => boolean;
   toggleHabitToday: (habitId: string) => boolean;
   toggleHabitDay: (habitId: string, dayKey: DayKey) => boolean;
 };
@@ -52,6 +54,7 @@ function sanitizeHabit(habit: HabitItem): HabitItem {
     scheduledDays,
     reminderEnabled: habit.reminderEnabled ?? false,
     reminderMinutes: habit.reminderMinutes ?? 19 * 60,
+    targetMinutes: habit.targetMinutes ?? 10,
   };
 }
 
@@ -137,6 +140,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       scheduledDays: input.scheduledDays,
       reminderEnabled: input.reminderEnabled,
       reminderMinutes: input.reminderMinutes,
+      targetMinutes: input.targetMinutes,
       days: buildWeekDays(),
     };
 
@@ -171,12 +175,40 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     return didToggle;
   };
 
+  const setHabitDayCompletion = (habitId: string, dayKey: DayKey, filled: boolean) => {
+    let didUpdate = false;
+
+    setHabits((current) =>
+      current.map((habit) => {
+        if (habit.id !== habitId) {
+          return habit;
+        }
+
+        didUpdate = true;
+
+        return {
+          ...habit,
+          days: buildWeekDays({
+            ...filledMapFromDays(habit.days),
+            [dayKey]: filled,
+          }),
+        };
+      })
+    );
+
+    return didUpdate;
+  };
+
   const toggleHabitToday = (habitId: string) => {
     return toggleHabitDay(habitId, getTodayDayKey());
   };
 
+  const completeHabitToday = (habitId: string) => {
+    return setHabitDayCompletion(habitId, getTodayDayKey(), true);
+  };
+
   return (
-    <HabitsContext.Provider value={{ habits, addHabit, toggleHabitToday, toggleHabitDay }}>
+    <HabitsContext.Provider value={{ habits, addHabit, completeHabitToday, toggleHabitToday, toggleHabitDay }}>
       {children}
     </HabitsContext.Provider>
   );

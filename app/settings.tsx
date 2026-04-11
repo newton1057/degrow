@@ -20,6 +20,7 @@ type SettingToggleRowProps = {
 type SettingValueRowProps = {
   description?: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
+  onPress?: () => void;
   title: string;
   value: string;
 };
@@ -31,7 +32,8 @@ function SettingToggleRow({
   value,
   onValueChange,
 }: SettingToggleRowProps) {
-  const { colors } = useAppTheme();
+  const { colors, resolvedTheme } = useAppTheme();
+  const switchActiveTrack = resolvedTheme === 'dark' ? '#30D158' : '#34C759';
 
   return (
     <View style={styles.settingRow}>
@@ -48,19 +50,19 @@ function SettingToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        thumbColor={value ? '#F4F4F5' : colors.switchFalseThumb}
-        trackColor={{ false: colors.switchFalseTrack, true: colors.text }}
+        thumbColor={value ? '#FFFFFF' : colors.switchFalseThumb}
+        trackColor={{ false: colors.switchFalseTrack, true: switchActiveTrack }}
         ios_backgroundColor={colors.switchFalseTrack}
       />
     </View>
   );
 }
 
-function SettingValueRow({ description, icon, title, value }: SettingValueRowProps) {
+function SettingValueRow({ description, icon, onPress, title, value }: SettingValueRowProps) {
   const { colors } = useAppTheme();
 
   return (
-    <Pressable style={styles.settingRow}>
+    <Pressable onPress={onPress} style={styles.settingRow}>
       <View style={styles.settingRowMain}>
         <View style={[styles.settingIconBox, { backgroundColor: colors.surfaceMuted }]}>
           <MaterialCommunityIcons name={icon} size={18} color={colors.icon} />
@@ -255,6 +257,14 @@ export default function SettingsScreen() {
                 title={t('settings.rows.exportDataTitle')}
                 description={t('settings.rows.exportDataDescription')}
                 value={t('settings.values.available')}
+              />
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <SettingValueRow
+                icon="cellphone-cog"
+                title={t('settings.rows.permissionsTitle')}
+                description={t('settings.rows.permissionsDescription')}
+                value={t('settings.values.manage')}
+                onPress={() => router.push('/permissions')}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingValueRow

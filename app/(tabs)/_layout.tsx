@@ -1,4 +1,10 @@
-import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
+import {
+  Icon,
+  Label,
+  NativeTabs,
+  type NativeTabsBlurEffect,
+  type NativeTabsTriggerTabBarProps,
+} from 'expo-router/unstable-native-tabs';
 import React from 'react';
 import { Platform } from 'react-native';
 
@@ -7,37 +13,71 @@ import { useAppTheme } from '@/providers/theme-provider';
 
 export default function TabLayout() {
   const { t } = useI18n();
-  const { colors } = useAppTheme();
+  const { colors, resolvedTheme } = useAppTheme();
+  const isIOS = Platform.OS === 'ios';
+  const tabBlurEffect: NativeTabsBlurEffect | undefined = isIOS
+    ? resolvedTheme === 'light'
+      ? 'systemThinMaterialLight'
+      : 'systemThinMaterialDark'
+    : undefined;
+  const tabBackgroundColor = isIOS
+    ? resolvedTheme === 'light'
+      ? 'rgba(247,248,251,0.58)'
+      : 'rgba(17,17,19,0.54)'
+    : colors.surface;
+  const defaultTabColor = colors.textMuted;
+  const selectedTabColor = colors.text;
+  const tabGlassTintColor = resolvedTheme === 'light' ? '#FFFFFF' : '#F5F5F7';
+  const tabShadowColor = resolvedTheme === 'light' ? 'rgba(17,19,21,0.12)' : 'rgba(255,255,255,0.10)';
+  const tabBarAppearance: NativeTabsTriggerTabBarProps = {
+    backgroundColor: tabBackgroundColor,
+    blurEffect: tabBlurEffect,
+    disableTransparentOnScrollEdge: true,
+    iconColor: defaultTabColor,
+    labelStyle: {
+      color: defaultTabColor,
+      fontSize: 13,
+      fontWeight: '600' as const,
+    },
+    shadowColor: tabShadowColor,
+  };
+  const stableScrollEdgeOptions = {
+    overrideScrollViewContentInsetAdjustmentBehavior: false,
+  } as unknown as React.ComponentProps<typeof NativeTabs.Trigger>['options'];
 
   return (
     <NativeTabs
-      blurEffect={Platform.OS === 'ios' ? 'systemDefault' : undefined}
-      disableTransparentOnScrollEdge={false}
+      backgroundColor={tabBackgroundColor}
+      blurEffect={tabBlurEffect}
+      disableTransparentOnScrollEdge
       iconColor={{
         default: colors.iconMuted,
         selected: colors.text,
       }}
-      minimizeBehavior={Platform.OS === 'ios' ? 'onScrollDown' : undefined}
+      minimizeBehavior={isIOS ? 'never' : undefined}
+      shadowColor={tabShadowColor}
       labelStyle={{
         default: {
-          color: colors.textMuted,
+          color: defaultTabColor,
           fontSize: 13,
           fontWeight: '600',
         },
         selected: {
-          color: colors.text,
+          color: selectedTabColor,
           fontSize: 13,
           fontWeight: '700',
         },
       }}
-      tintColor={colors.tint}>
-      <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} />
-        <Label selectedStyle={{ color: colors.text, fontWeight: '700' }}>{t('tabs.listView')}</Label>
+      tintColor={tabGlassTintColor}>
+      <NativeTabs.Trigger name="index" disableScrollToTop options={stableScrollEdgeOptions}>
+        <NativeTabs.Trigger.TabBar {...tabBarAppearance} />
+        <Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} selectedColor={selectedTabColor} />
+        <Label selectedStyle={{ color: selectedTabColor, fontWeight: '700' }}>{t('tabs.listView')}</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} />
-        <Label selectedStyle={{ color: colors.text, fontWeight: '700' }}>{t('tabs.profile')}</Label>
+      <NativeTabs.Trigger name="profile" disableScrollToTop options={stableScrollEdgeOptions}>
+        <NativeTabs.Trigger.TabBar {...tabBarAppearance} />
+        <Icon sf={{ default: 'person.crop.circle', selected: 'person.crop.circle.fill' }} selectedColor={selectedTabColor} />
+        <Label selectedStyle={{ color: selectedTabColor, fontWeight: '700' }}>{t('tabs.profile')}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );

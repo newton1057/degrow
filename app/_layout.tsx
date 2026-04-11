@@ -1,16 +1,16 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useEffect, useState } from 'react';
 
 import { HabitsProvider } from '@/providers/habits-provider';
 import { LanguageProvider, useI18n } from '@/providers/language-provider';
 import { AppThemeProvider, useAppTheme } from '@/providers/theme-provider';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
-import { useEffect, useState } from 'react';
-import { useRouter, useSegments } from 'expo-router';
+import { NotificationsProvider } from '@/providers/notifications-provider';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -19,7 +19,7 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
@@ -29,7 +29,7 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!hasMounted) return;
+    if (!hasMounted || isLoading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -38,7 +38,7 @@ function RootLayoutNav() {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [user, segments, hasMounted]);
+  }, [hasMounted, isLoading, router, segments, user]);
 
   const navigationTheme = {
     ...(resolvedTheme === 'dark' ? DarkTheme : DefaultTheme),
@@ -58,7 +58,9 @@ function RootLayoutNav() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="new-habit" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="habit-session" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="permissions" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('modal.title') }} />
       </Stack>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
@@ -73,9 +75,11 @@ export default function RootLayout() {
         <AppThemeProvider>
           <AuthProvider>
             <HabitsProvider>
-              <BottomSheetModalProvider>
-                <RootLayoutNav />
-              </BottomSheetModalProvider>
+              <NotificationsProvider>
+                <BottomSheetModalProvider>
+                  <RootLayoutNav />
+                </BottomSheetModalProvider>
+              </NotificationsProvider>
             </HabitsProvider>
           </AuthProvider>
         </AppThemeProvider>

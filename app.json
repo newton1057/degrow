@@ -4,15 +4,21 @@
     "slug": "degrow",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/icons/icon.png",
     "scheme": "degrow",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
+      "icon": "./assets/icons/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.degrow"
     },
     "android": {
+      "permissions": [
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM",
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -28,6 +34,22 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#2CC7D9",
+          "defaultChannel": "habit-reminders"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow DeGrow to let you choose a profile photo.",
+          "cameraPermission": "Allow DeGrow to let you take a profile photo.",
+          "microphonePermission": false
+        }
+      ],
       [
         "expo-splash-screen",
         {

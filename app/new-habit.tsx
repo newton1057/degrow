@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 
 
@@ -26,11 +26,10 @@ import { DEFAULT_HABIT_NAME_VALUES, useI18n } from '@/providers/language-provide
 import { useAppTheme } from '@/providers/theme-provider';
 
 const previewDates = ['02', '03', '04', '05', '06', '07', '08'];
-const REMINDER_DAY_MINUTES = 24 * 60;
-
 const WHEEL_ITEM_HEIGHT = 50;
 const WHEEL_VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS;
+const SESSION_MINUTE_OPTIONS = [10, 15, 20, 30, 45, 60];
 
 const HOURS_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
 const MINUTES_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i * 5, label: String(i * 5).padStart(2, '0') }));
@@ -348,6 +347,7 @@ export default function NewHabitScreen() {
   const [selectedThemeId, setSelectedThemeId] = useState('blue');
   const [reminderEnabled, setReminderEnabled] = useState(true);
   const [reminderMinutes, setReminderMinutes] = useState(19 * 60);
+  const [targetMinutes, setTargetMinutes] = useState(10);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['52%'], []);
   const [selectedDays, setSelectedDays] = useState([true, false, true, true, false, true, false]);
@@ -366,6 +366,8 @@ export default function NewHabitScreen() {
   const selectedScheduledDays = WEEK_DAY_KEYS.filter((_, index) => selectedDays[index]);
   const canCreateHabit = habitName.trim().length > 0 && selectedScheduledDays.length > 0;
   const selectedIconChoiceBg = resolvedTheme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(17,19,21,0.05)';
+  const selectedThemeAccentIsLight = ['white', 'yellow'].includes(selectedTheme.id);
+  const activeSwitchThumbColor = selectedThemeAccentIsLight ? '#111315' : '#FFFFFF';
   const reminderTimeLabel = `${reminderParts.hour}:${reminderParts.minute} ${t(
     `newHabit.time.${reminderParts.period.toLowerCase()}`
   )}`;
@@ -440,6 +442,7 @@ export default function NewHabitScreen() {
       scheduledDays: selectedScheduledDays,
       reminderEnabled,
       reminderMinutes,
+      targetMinutes,
     });
 
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -584,6 +587,39 @@ export default function NewHabitScreen() {
                   );
                 })}
               </View>
+
+              <Text style={[styles.fieldLabel, styles.fieldSpacer, { color: colors.text }]}>
+                {t('newHabit.labels.sessionLength')}
+              </Text>
+              <Text style={[styles.settingDescription, { color: colors.textMuted }]}>
+                {t('newHabit.session.description')}
+              </Text>
+              <View style={styles.sessionOptionsRow}>
+                {SESSION_MINUTE_OPTIONS.map((minutes) => {
+                  const active = targetMinutes === minutes;
+
+                  return (
+                    <View key={minutes} style={styles.sessionOptionCell}>
+                      <Pressable
+                        onPress={() => setTargetMinutes(minutes)}
+                        style={[
+                          styles.sessionOption,
+                          { backgroundColor: colors.surfaceAlt, borderColor: colors.border },
+                          active && { backgroundColor: selectedTheme.accent, borderColor: selectedTheme.accent },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.sessionOptionText,
+                            { color: colors.textSecondary },
+                            active && { color: accentForeground },
+                          ]}>
+                          {t('newHabit.session.minuteShort', { minutes })}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  );
+                })}
+              </View>
             </Section>
 
             <Section eyebrow={t('newHabit.sections.scheduleEyebrow')} title={t('newHabit.sections.repeatPattern')}>
@@ -621,7 +657,7 @@ export default function NewHabitScreen() {
                   <Switch
                     value={reminderEnabled}
                     onValueChange={handleReminderToggle}
-                    thumbColor={reminderEnabled ? '#F7F7F8' : colors.switchFalseThumb}
+                    thumbColor={reminderEnabled ? activeSwitchThumbColor : colors.switchFalseThumb}
                     trackColor={{ false: colors.switchFalseTrack, true: selectedTheme.accent }}
                     ios_backgroundColor={colors.switchFalseTrack}
                   />
@@ -1192,6 +1228,29 @@ const styles = StyleSheet.create({
   colorChipInnerLight: {
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.08)',
+  },
+  sessionOptionsRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -3,
+  },
+  sessionOptionCell: {
+    width: '16.66%',
+    paddingHorizontal: 3,
+  },
+  sessionOption: {
+    width: '100%',
+    height: 38,
+    borderRadius: 13,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionOptionText: {
+    fontSize: 10.8,
+    fontWeight: '700',
+    letterSpacing: -0.45,
   },
   actionsRow: {
     flexDirection: 'row',

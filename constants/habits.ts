@@ -35,6 +35,7 @@ export type HabitItem = {
   completionVariant: 'light' | 'dark';
   reminderEnabled: boolean;
   reminderMinutes: number;
+  targetMinutes: number;
 };
 
 export const WEEK_DAY_KEYS: DayKey[] = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'];
@@ -114,6 +115,7 @@ export const defaultHabits: HabitItem[] = [
     scheduledDays: [...WEEK_DAY_KEYS],
     reminderEnabled: true,
     reminderMinutes: 19 * 60,
+    targetMinutes: 10,
     theme: {
       iconBg: '#5DA8E8',
       accent: '#78BDF7',
@@ -131,6 +133,7 @@ export const defaultHabits: HabitItem[] = [
     scheduledDays: ['sat', 'mon', 'wed', 'fri'],
     reminderEnabled: true,
     reminderMinutes: 18 * 60,
+    targetMinutes: 45,
     theme: {
       iconBg: '#D2A12C',
       accent: '#D8AA38',
@@ -148,6 +151,7 @@ export const defaultHabits: HabitItem[] = [
     scheduledDays: [...WEEK_DAY_KEYS],
     reminderEnabled: false,
     reminderMinutes: 13 * 60,
+    targetMinutes: 20,
     theme: {
       iconBg: '#D67C50',
       accent: '#E08A5C',
@@ -165,6 +169,7 @@ export const defaultHabits: HabitItem[] = [
     scheduledDays: [...WEEK_DAY_KEYS],
     reminderEnabled: true,
     reminderMinutes: 23 * 60,
+    targetMinutes: 10,
     theme: {
       iconBg: '#D86C8E',
       accent: '#E784A3',
@@ -182,6 +187,7 @@ export const defaultHabits: HabitItem[] = [
     scheduledDays: ['sat', 'sun', 'tue', 'thu', 'fri'],
     reminderEnabled: true,
     reminderMinutes: 7 * 60,
+    targetMinutes: 10,
     theme: {
       iconBg: '#1FA052',
       accent: '#2DB860',

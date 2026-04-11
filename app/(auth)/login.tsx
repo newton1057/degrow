@@ -32,8 +32,6 @@ export default function LoginScreen() {
     await signIn(email || 'demo@degrow.app', password || 'password');
   };
 
-  const selectedTheme = { accent: '#2CC7D9', onAccent: '#F6F9FE' }; // Fallback to teal if needed, or stick to standard primary
-
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />

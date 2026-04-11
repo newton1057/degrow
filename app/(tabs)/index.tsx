@@ -1,11 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { WEEK_DAY_KEYS, getTodayDayKey, type HabitItem } from '@/constants/habits';
 
+import { TabBarBlurUnderlay } from '@/components/tab-bar-blur-underlay';
 import { useHabits } from '@/providers/habits-provider';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
@@ -39,6 +40,7 @@ function DayCircle({
         styles.dayCircle,
         {
           borderColor: accent,
+          backgroundColor: filled ? accent : 'transparent',
         },
         disabled && styles.dayCircleDisabled,
       ]}>
@@ -51,10 +53,12 @@ function HabitCard({
   habit,
   onToggleToday,
   onToggleDay,
+  onOpenTimer,
 }: {
   habit: HabitItem;
   onToggleToday: (habitId: string) => void;
   onToggleDay: (habitId: string, dayKey: (typeof WEEK_DAY_KEYS)[number]) => void;
+  onOpenTimer: (habitId: string) => void;
 }) {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
@@ -67,10 +71,11 @@ function HabitCard({
 
   const iconColor = habit.theme.iconColor ?? (isLight ? '#FFFFFF' : '#F6F8FB');
   const filledTextColor = habit.theme.onAccent ?? (isLight ? '#FFFFFF' : '#EAF4FD');
-  const completedCheckColor = habit.theme.accent === '#FFFFFF' ? (isLight ? colors.background : '#121315') : habit.theme.accent;
+  const hasWhiteAccent = habit.theme.accent.toUpperCase() === '#FFFFFF';
+  const completedCheckColor = hasWhiteAccent ? (isLight ? colors.text : '#121315') : habit.theme.accent;
   
   const completionBg = isCompletedToday 
-    ? (isLight ? colors.text : '#FFFFFF') 
+    ? (isLight ? (hasWhiteAccent ? colors.surface : `${habit.theme.accent}1F`) : '#FFFFFF')
     : isScheduledToday 
       ? (isLight ? colors.surfaceAlt : '#151517') 
       : (isLight ? colors.surface : '#111113');
@@ -82,7 +87,7 @@ function HabitCard({
       : (isLight ? colors.border : 'rgba(255,255,255,0.32)');
       
   const completionBorder = isCompletedToday
-    ? (isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.12)')
+    ? (isLight ? (hasWhiteAccent ? colors.borderStrong : `${habit.theme.accent}80`) : 'rgba(255,255,255,0.12)')
     : isScheduledToday
       ? habit.theme.accent
       : (isLight ? colors.border : 'rgba(255,255,255,0.06)');
@@ -113,6 +118,15 @@ function HabitCard({
               <MaterialCommunityIcons name={habit.icon} size={18} color={iconColor} />
             </View>
             <Text style={[styles.habitTitle, { color: colors.text }]}>{habitLabel}</Text>
+            <Pressable
+              onPress={() => onOpenTimer(habit.id)}
+              style={[
+                styles.timerPill,
+                { backgroundColor: isLight ? colors.surfaceAlt : 'rgba(255,255,255,0.08)' },
+              ]}>
+              <Ionicons name="timer-outline" size={13} color={habit.theme.accent} />
+              <Text style={[styles.timerPillText, { color: habit.theme.accent }]}>{habit.targetMinutes}m</Text>
+            </Pressable>
           </View>
 
           <View style={styles.weekdayRow}>
@@ -199,6 +213,11 @@ export default function DeGrowScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const handleOpenTimer = (habitId: string) => {
+    void Haptics.selectionAsync();
+    router.push({ pathname: '/habit-session', params: { habitId } } as unknown as Href);
+  };
+
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
@@ -250,10 +269,12 @@ export default function DeGrowScreen() {
                 habit={habit}
                 onToggleToday={handleToggleToday}
                 onToggleDay={handleToggleDay}
+                onOpenTimer={handleOpenTimer}
               />
             ))}
           </ScrollView>
         </View>
+        <TabBarBlurUnderlay />
       </View>
     </SafeAreaView>
   );
@@ -305,7 +326,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: 14,
-    paddingBottom: 104,
+    paddingBottom: 160,
   },
   summaryCard: {
     borderRadius: 24,
@@ -423,10 +444,24 @@ const styles = StyleSheet.create({
   },
   habitTitle: {
     color: '#F5F5F7',
+    flex: 1,
     flexShrink: 1,
     fontSize: 15.5,
     fontWeight: '600',
     letterSpacing: -0.24,
+  },
+  timerPill: {
+    height: 26,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+  },
+  timerPillText: {
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   weekdayRow: {
     flexDirection: 'row',
