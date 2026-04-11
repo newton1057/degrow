@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
 import { useAuth } from '@/providers/auth-provider';
+import { getFirebaseAuthErrorMessageKey } from '@/services/firebase-auth-errors';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -30,7 +32,22 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await signUp(name || 'Demo User', email || 'demo@degrow.app', password || 'password');
+
+    if (!name.trim() || !email.trim() || !password) {
+      Alert.alert(t('auth.requiredFieldsTitle'), t('auth.requiredFieldsMessage'));
+      return;
+    }
+
+    try {
+      await signUp(name, email, password);
+    } catch (error) {
+      Alert.alert(t('auth.signUpErrorTitle'), t(getFirebaseAuthErrorMessageKey(error)));
+    }
+  };
+
+  const handleSocialRegister = () => {
+    void Haptics.selectionAsync();
+    Alert.alert(t('auth.socialUnavailableTitle'), t('auth.socialUnavailableMessage'));
   };
 
   return (
@@ -108,7 +125,7 @@ export default function RegisterScreen() {
             <View style={styles.socialContainer}>
               <Pressable
                 style={[styles.socialButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                onPress={handleRegister}
+                onPress={handleSocialRegister}
                 disabled={isLoading}>
                 <Ionicons name="logo-google" size={20} color={colors.text} />
                 <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.continueWithGoogle')}</Text>
@@ -116,7 +133,7 @@ export default function RegisterScreen() {
 
               <Pressable
                 style={[styles.socialButton, { backgroundColor: colors.text, borderColor: colors.text }]}
-                onPress={handleRegister}
+                onPress={handleSocialRegister}
                 disabled={isLoading}>
                 <Ionicons name="logo-apple" size={20} color={colors.background} />
                 <Text style={[styles.socialButtonText, { color: colors.background }]}>{t('auth.continueWithApple')}</Text>

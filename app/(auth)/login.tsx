@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
 import { useAuth } from '@/providers/auth-provider';
+import { getFirebaseAuthErrorMessageKey } from '@/services/firebase-auth-errors';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -29,7 +31,22 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await signIn(email || 'demo@degrow.app', password || 'password');
+
+    if (!email.trim() || !password) {
+      Alert.alert(t('auth.requiredFieldsTitle'), t('auth.requiredFieldsMessage'));
+      return;
+    }
+
+    try {
+      await signIn(email, password);
+    } catch (error) {
+      Alert.alert(t('auth.logInErrorTitle'), t(getFirebaseAuthErrorMessageKey(error)));
+    }
+  };
+
+  const handleSocialLogin = () => {
+    void Haptics.selectionAsync();
+    Alert.alert(t('auth.socialUnavailableTitle'), t('auth.socialUnavailableMessage'));
   };
 
   return (
@@ -94,7 +111,7 @@ export default function LoginScreen() {
             <View style={styles.socialContainer}>
               <Pressable
                 style={[styles.socialButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                onPress={handleLogin}
+                onPress={handleSocialLogin}
                 disabled={isLoading}>
                 <Ionicons name="logo-google" size={20} color={colors.text} />
                 <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.continueWithGoogle')}</Text>
@@ -102,7 +119,7 @@ export default function LoginScreen() {
 
               <Pressable
                 style={[styles.socialButton, { backgroundColor: colors.text, borderColor: colors.text }]}
-                onPress={handleLogin}
+                onPress={handleSocialLogin}
                 disabled={isLoading}>
                 <Ionicons name="logo-apple" size={20} color={colors.background} />
                 <Text style={[styles.socialButtonText, { color: colors.background }]}>{t('auth.continueWithApple')}</Text>

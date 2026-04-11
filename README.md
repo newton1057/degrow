@@ -1,50 +1,39 @@
-# Welcome to your Expo app 👋
+# DeGrow
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+DeGrow is an Expo Router React Native habit tracker focused on reading, daily habit consistency, local reminders, profile personalization, and focus sessions. The current app is local-first: user, theme, language, and habit state are persisted on the device, while backend integration is intentionally not connected yet.
 
-## Get started
+Evidence: `app.json:L2-L10`, `app/_layout.tsx:L71-L89`, `providers/auth-provider.tsx:L23-L51`, `providers/habits-provider.tsx:L41-L58`, `services/local-notifications.ts:L230-L317`.
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Quickstart
 
 ```bash
-npm run reset-project
+npm install
+npm run ios
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+Use `npm start` for Metro, `npm run android` for Android, `npm run web` for web, and `npm run lint` for lint validation.
 
-## Learn more
+Evidence: `package.json:L5-L12`.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Documentation
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Start with [`docs/INDEX.md`](docs/INDEX.md). The most useful paths are:
 
-## Join the community
+- New engineer: [`docs/QUICKSTART.md`](docs/QUICKSTART.md), [`docs/_inventory/REPO_MAP.md`](docs/_inventory/REPO_MAP.md), [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- Designer: [`docs/design/UI_UX_RULES.md`](docs/design/UI_UX_RULES.md), [`docs/design/DESIGN_SYSTEM.md`](docs/design/DESIGN_SYSTEM.md), [`docs/design/ACCESSIBILITY.md`](docs/design/ACCESSIBILITY.md).
+- AI agent: [`docs/AI_AGENT_PLAYBOOK.md`](docs/AI_AGENT_PLAYBOOK.md), [`docs/_inventory/REPO_MAP.md`](docs/_inventory/REPO_MAP.md), [`docs/improvements/PROPOSALS.md`](docs/improvements/PROPOSALS.md).
 
-Join our community of developers creating universal apps.
+## Current Status
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Frontend: Expo Router app with auth, tabs, profile, settings, permissions, new habit creation, and focus session screens.
+- Backend: no runtime API/server is present. `backend/templates/` contains English HTML email templates for future backend workflows.
+- Data: local JSON files via Expo FileSystem, not a remote database.
+- Notifications: local notification scheduling is implemented behind native-module availability guards and requires a rebuilt development client or production native build.
+
+Evidence: `app/(auth)/login.tsx:L22-L125`, `app/(tabs)/index.tsx:L221-L280`, `app/settings.tsx:L140-L293`, `app/permissions.tsx:L253-L343`, `backend/templates/README.md:L1-L13`, `services/local-notifications.ts:L90-L136`.
+
+## Screenshots
+
+[TBD] Add current screenshots for dark mode, light mode, settings, new habit, profile, and focus session after the next stable UI pass.
+
+How to confirm: capture simulator/device screenshots after running `npm run ios`; app routes are listed in `app/`.
