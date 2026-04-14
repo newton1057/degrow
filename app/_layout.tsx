@@ -19,7 +19,7 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, isLoading } = useAuth();
+  const { user, isInitializing } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
@@ -29,7 +29,7 @@ function RootLayoutNav() {
   }, []);
 
   useEffect(() => {
-    if (!hasMounted || isLoading) return;
+    if (!hasMounted || isInitializing) return;
 
     const inAuthGroup = segments[0] === '(auth)';
 
@@ -38,7 +38,7 @@ function RootLayoutNav() {
     } else if (user && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [hasMounted, isLoading, router, segments, user]);
+  }, [hasMounted, isInitializing, router, segments, user]);
 
   const navigationTheme = {
     ...(resolvedTheme === 'dark' ? DarkTheme : DefaultTheme),

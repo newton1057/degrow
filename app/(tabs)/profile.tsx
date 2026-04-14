@@ -1,4 +1,3 @@
-import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { requireOptionalNativeModule } from 'expo-modules-core';
@@ -36,27 +35,6 @@ function getInitials(name: string) {
   );
 }
 
-async function copyProfileAvatar(sourceUri: string, userId: string, previousUri?: string | null) {
-  if (!FileSystem.documentDirectory) {
-    return sourceUri;
-  }
-
-  const extension = sourceUri.match(/\.(jpe?g|png|webp|heic)(\?.*)?$/i)?.[1]?.toLowerCase() ?? 'jpg';
-  const destinationUri = `${FileSystem.documentDirectory}degrow-profile-avatar-${userId}-${Date.now()}.${extension}`;
-
-  try {
-    await FileSystem.copyAsync({ from: sourceUri, to: destinationUri });
-
-    if (previousUri?.startsWith(FileSystem.documentDirectory) && previousUri !== destinationUri) {
-      void FileSystem.deleteAsync(previousUri, { idempotent: true });
-    }
-
-    return destinationUri;
-  } catch {
-    return sourceUri;
-  }
-}
-
 function canUseNativeImagePicker() {
   return Boolean(requireOptionalNativeModule('ExponentImagePicker'));
 }
@@ -80,7 +58,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, isLoading: isUpdatingProfile } = useAuth();
   const { habits } = useHabits();
   const profileName = user?.name?.trim() || t('profile.defaultName');
   const profileEmail = user?.email?.trim() || t('profile.noEmail');
@@ -133,12 +111,20 @@ export default function ProfileScreen() {
   };
 
   const saveAvatar = async (assetUri?: string | null) => {
-    if (!assetUri) {
+    if (!assetUri || isUpdatingProfile) {
       return;
     }
 
-    const avatarUri = await copyProfileAvatar(assetUri, user?.id ?? 'local', user?.avatarUri);
-    updateProfile({ avatarUri });
+    if (!user) {
+      return;
+    }
+
+    try {
+      await updateProfile({ avatarUri: assetUri });
+    } catch (error) {
+      console.warn('Profile photo upload failed.', error);
+      Alert.alert(t('profile.photoUploadErrorTitle'), t('profile.photoUploadErrorMessage'));
+    }
   };
 
   const chooseFromLibrary = async () => {
@@ -205,6 +191,10 @@ export default function ProfileScreen() {
   );
 
   const runPhotoAction = (action: () => Promise<void>) => {
+    if (isUpdatingProfile) {
+      return;
+    }
+
     void Haptics.selectionAsync();
     photoSheetRef.current?.dismiss();
     setTimeout(() => {
@@ -213,6 +203,10 @@ export default function ProfileScreen() {
   };
 
   const handleProfilePhotoPress = () => {
+    if (isUpdatingProfile) {
+      return;
+    }
+
     void Haptics.selectionAsync();
 
     if (!ensureImagePickerReady()) {
@@ -252,7 +246,8 @@ export default function ProfileScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={hasAvatar ? t('profile.changePhoto') : t('profile.addPhoto')}
                   onPress={handleProfilePhotoPress}
-                  style={({ pressed }) => [styles.avatarButton, pressed && { opacity: 0.78 }]}>
+                  disabled={isUpdatingProfile}
+                  style={({ pressed }) => [styles.avatarButton, (pressed || isUpdatingProfile) && { opacity: 0.78 }]}>
                   <View style={[styles.avatarWrap, { backgroundColor: colors.surfaceMuted }]}>
                     {user?.avatarUri ? (
                       <Image source={{ uri: user.avatarUri }} style={styles.avatarImage} contentFit="cover" />

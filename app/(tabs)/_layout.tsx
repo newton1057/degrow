@@ -5,15 +5,18 @@ import {
   type NativeTabsBlurEffect,
   type NativeTabsTriggerTabBarProps,
 } from 'expo-router/unstable-native-tabs';
+import { Redirect } from 'expo-router';
 import React from 'react';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function TabLayout() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
+  const { user, isInitializing } = useAuth();
   const isIOS = Platform.OS === 'ios';
   const tabBlurEffect: NativeTabsBlurEffect | undefined = isIOS
     ? resolvedTheme === 'light'
@@ -44,6 +47,14 @@ export default function TabLayout() {
   const stableScrollEdgeOptions = {
     overrideScrollViewContentInsetAdjustmentBehavior: false,
   } as unknown as React.ComponentProps<typeof NativeTabs.Trigger>['options'];
+
+  if (isInitializing) {
+    return <View style={{ flex: 1, backgroundColor: colors.background }} />;
+  }
+
+  if (!user) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <NativeTabs

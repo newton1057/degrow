@@ -11,21 +11,29 @@ import {
 } from 'firebase/auth';
 
 import { firebaseAuth } from '@/services/firebase-auth';
+import { uploadUserProfileImage } from '@/services/user-media';
+import {
+  ensureUserProfileDocument,
+  updateUserProfileDocument,
+  type UserProfile,
+} from '@/services/user-profile';
 
 type User = {
   id: string;
   name: string;
   email: string;
   avatarUri?: string | null;
+  avatarStoragePath?: string | null;
 };
 
 type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
+  isInitializing: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (name: string, email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
-  updateProfile: (profile: Partial<Pick<User, 'avatarUri' | 'email' | 'name'>>) => void;
+  updateProfile: (profile: Partial<Pick<User, 'avatarStoragePath' | 'avatarUri' | 'email' | 'name'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -91,12 +99,24 @@ function mapFirebaseUser(firebaseUser: FirebaseUser, storedUser: User | null = n
     name,
     email,
     avatarUri: storedSameUser?.avatarUri ?? firebaseUser.photoURL ?? null,
+    avatarStoragePath: storedSameUser?.avatarStoragePath ?? null,
+  };
+}
+
+function mapUserProfile(profile: UserProfile): User {
+  return {
+    id: profile.id,
+    name: profile.name,
+    email: profile.email,
+    avatarUri: profile.avatarUri ?? null,
+    avatarStoragePath: profile.avatarStoragePath ?? null,
   };
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
   const router = useRouter();
 
@@ -110,13 +130,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setUser(firebaseUser ? mapFirebaseUser(firebaseUser, storedUser) : null);
-      setIsLoading(false);
+      if (!firebaseUser) {
+        setUser(null);
+        setIsInitializing(false);
+        setHasLoadedUser(true);
+        return;
+      }
+
+      const authUser = mapFirebaseUser(firebaseUser, storedUser);
+
+      setUser(authUser);
+      setIsInitializing(false);
       setHasLoadedUser(true);
+
+      void ensureUserProfileDocument(authUser)
+        .then((profile) => {
+          if (isMounted && firebaseAuth.currentUser?.uid === profile.id) {
+            setUser(mapUserProfile(profile));
+          }
+        })
+        .catch((error) => {
+          console.warn('Unable to sync user profile with Firestore.', error);
+        });
     }, () => {
       if (isMounted) {
         setUser(null);
-        setIsLoading(false);
+        setIsInitializing(false);
         setHasLoadedUser(true);
       }
     });
@@ -161,7 +200,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmedEmail, pass);
 
       if (trimmedName) {
-        await updateFirebaseProfile(credential.user, { displayName: trimmedName });
+        void updateFirebaseProfile(credential.user, { displayName: trimmedName }).catch(() => {
+          // Account creation should not fail just because display name sync fails.
+        });
       }
 
       setUser({
@@ -169,7 +210,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: trimmedName || getDisplayNameFromEmail(trimmedEmail),
         email: credential.user.email ?? trimmedEmail,
         avatarUri: credential.user.photoURL ?? null,
+        avatarStoragePath: null,
       });
+
+      void ensureUserProfileDocument({
+        id: credential.user.uid,
+        name: trimmedName || getDisplayNameFromEmail(trimmedEmail),
+        email: credential.user.email ?? trimmedEmail,
+        avatarUri: credential.user.photoURL ?? null,
+        avatarStoragePath: null,
+      }).catch((error) => {
+        console.warn('Unable to create user profile document.', error);
+      });
+
       router.replace('/(tabs)');
     } finally {
       setIsLoading(false);
@@ -188,20 +241,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile: AuthContextValue['updateProfile'] = (profile) => {
-    setUser((currentUser) => {
-      if (!currentUser) {
-        return currentUser;
+  const updateProfile: AuthContextValue['updateProfile'] = async (profile) => {
+    const currentUser = user;
+
+    if (!currentUser) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const nextProfile = { ...profile };
+
+      if (nextProfile.avatarUri) {
+        const upload = await uploadUserProfileImage(
+          currentUser.id,
+          nextProfile.avatarUri,
+          currentUser.avatarStoragePath
+        );
+
+        nextProfile.avatarUri = upload.url;
+        nextProfile.avatarStoragePath = upload.storagePath;
       }
 
-      if (profile.name && firebaseAuth.currentUser?.uid === currentUser.id) {
-        void updateFirebaseProfile(firebaseAuth.currentUser, { displayName: profile.name }).catch(() => {
-          // Keep local profile changes usable even if the remote display name update fails.
+      if (firebaseAuth.currentUser?.uid === currentUser.id) {
+        await updateFirebaseProfile(firebaseAuth.currentUser, {
+          displayName: nextProfile.name ?? currentUser.name,
+          photoURL: nextProfile.avatarUri ?? currentUser.avatarUri ?? null,
         });
       }
 
-      return { ...currentUser, ...profile };
-    });
+      await updateUserProfileDocument(currentUser.id, nextProfile);
+      setUser({ ...currentUser, ...nextProfile });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -209,6 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isLoading,
+        isInitializing,
         signIn,
         signUp,
         signOut,
