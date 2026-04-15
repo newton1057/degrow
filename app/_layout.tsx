@@ -1,16 +1,17 @@
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { useEffect, useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import 'react-native-reanimated';
 
+import { useNameMigrationRedirect } from '@/hooks/use-name-migration';
+import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { HabitsProvider } from '@/providers/habits-provider';
 import { LanguageProvider, useI18n } from '@/providers/language-provider';
-import { AppThemeProvider, useAppTheme } from '@/providers/theme-provider';
-import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { NotificationsProvider } from '@/providers/notifications-provider';
+import { AppThemeProvider, useAppTheme } from '@/providers/theme-provider';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -23,6 +24,8 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
+
+  useNameMigrationRedirect();
 
   useEffect(() => {
     setHasMounted(true);
@@ -61,6 +64,7 @@ function RootLayoutNav() {
         <Stack.Screen name="habit-session" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="permissions" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="name-migration" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('modal.title') }} />
       </Stack>
       <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />

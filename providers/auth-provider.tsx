@@ -1,21 +1,21 @@
 import * as FileSystem from 'expo-file-system/legacy';
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useRouter } from 'expo-router';
 import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  updateProfile as updateFirebaseProfile,
-  type User as FirebaseUser,
+    createUserWithEmailAndPassword,
+    signOut as firebaseSignOut,
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    updateProfile as updateFirebaseProfile,
+    type User as FirebaseUser,
 } from 'firebase/auth';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { firebaseAuth } from '@/services/firebase-auth';
 import { uploadUserProfileImage } from '@/services/user-media';
 import {
-  ensureUserProfileDocument,
-  updateUserProfileDocument,
-  type UserProfile,
+    ensureUserProfileDocument,
+    updateUserProfileDocument,
+    type UserProfile,
 } from '@/services/user-profile';
 
 type User = {
@@ -143,15 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsInitializing(false);
       setHasLoadedUser(true);
 
-      void ensureUserProfileDocument(authUser)
-        .then((profile) => {
-          if (isMounted && firebaseAuth.currentUser?.uid === profile.id) {
-            setUser(mapUserProfile(profile));
-          }
-        })
-        .catch((error) => {
+      try {
+        const profile = await ensureUserProfileDocument(authUser);
+
+        if (isMounted && firebaseAuth.currentUser?.uid === profile.id) {
+          setUser(mapUserProfile(profile));
+        }
+      } catch (error) {
+        if (isMounted) {
           console.warn('Unable to sync user profile with Firestore.', error);
-        });
+        }
+      }
     }, () => {
       if (isMounted) {
         setUser(null);
@@ -200,27 +202,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmedEmail, pass);
 
       if (trimmedName) {
-        void updateFirebaseProfile(credential.user, { displayName: trimmedName }).catch(() => {
-          // Account creation should not fail just because display name sync fails.
-        });
+        await updateFirebaseProfile(credential.user, { displayName: trimmedName });
       }
+
+      const userName = trimmedName || getDisplayNameFromEmail(trimmedEmail);
 
       setUser({
         id: credential.user.uid,
-        name: trimmedName || getDisplayNameFromEmail(trimmedEmail),
+        name: userName,
         email: credential.user.email ?? trimmedEmail,
         avatarUri: credential.user.photoURL ?? null,
         avatarStoragePath: null,
       });
 
-      void ensureUserProfileDocument({
+      await ensureUserProfileDocument({
         id: credential.user.uid,
-        name: trimmedName || getDisplayNameFromEmail(trimmedEmail),
+        name: userName,
         email: credential.user.email ?? trimmedEmail,
         avatarUri: credential.user.photoURL ?? null,
         avatarStoragePath: null,
-      }).catch((error) => {
-        console.warn('Unable to create user profile document.', error);
       });
 
       router.replace('/(tabs)');

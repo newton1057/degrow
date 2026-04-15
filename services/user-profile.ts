@@ -27,10 +27,40 @@ function readOptionalString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value : null;
 }
 
+function looksDerivedFromEmail(name: string, email: string): boolean {
+  if (!name || !email) {
+    return false;
+  }
+
+  const emailLocal = email.split('@')[0]?.toLowerCase();
+  if (!emailLocal) {
+    return false;
+  }
+
+  const normalizedName = name.toLowerCase().trim();
+  const emailParts = emailLocal.split(/[._-]+/).filter(Boolean);
+
+  if (emailParts.length === 0) {
+    return false;
+  }
+
+  return emailParts.some((part) => normalizedName === part.toLowerCase());
+}
+
 function mapUserProfileDocument(userId: string, data: UserProfileDocument, fallback: UserProfile): UserProfile {
+  const existingName = readOptionalString(data.name);
+
+  let resolvedName = existingName ?? fallback.name;
+
+  if (existingName && fallback.name && fallback.name !== existingName) {
+    if (looksDerivedFromEmail(existingName, fallback.email)) {
+      resolvedName = fallback.name;
+    }
+  }
+
   return {
     id: userId,
-    name: readOptionalString(data.name) ?? fallback.name,
+    name: resolvedName,
     email: readOptionalString(data.email) ?? fallback.email,
     avatarUri: readOptionalString(data.avatarUri) ?? fallback.avatarUri ?? null,
     avatarStoragePath: readOptionalString(data.avatarStoragePath) ?? fallback.avatarStoragePath ?? null,

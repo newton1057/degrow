@@ -1,24 +1,24 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
-  buildWeekDays,
-  defaultHabits,
-  filledMapFromDays,
-  getCurrentWeekId,
-  getHabitTitleKeyFallback,
-  getTodayDayKey,
-  type DayKey,
-  type HabitItem,
-  type HabitTheme,
+    buildWeekDays,
+    defaultHabits,
+    filledMapFromDays,
+    getCurrentWeekId,
+    getHabitTitleKeyFallback,
+    getTodayDayKey,
+    type DayKey,
+    type HabitItem,
+    type HabitTheme,
 } from '@/constants/habits';
 import { useAuth } from '@/providers/auth-provider';
-import {
-  saveUserHabitsState,
-  subscribeToUserHabitsState,
-  type UserHabitsState,
-} from '@/services/user-habits';
+
+type UserHabitsState = {
+  weekId: string;
+  habits: import('@/constants/habits').HabitItem[];
+};
 
 type CreateHabitInput = {
   title: string;
@@ -145,7 +145,6 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
   const [hasLoadedRemoteState, setHasLoadedRemoteState] = useState(false);
   const currentWeekId = useMemo(() => getCurrentWeekId(), []);
   const activeUserIdRef = useRef<string | null>(null);
-  const hasAppliedRemotePayloadRef = useRef(false);
   const lastSyncedPayloadRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -153,7 +152,6 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     const userId = user?.id ?? null;
 
     activeUserIdRef.current = userId;
-    hasAppliedRemotePayloadRef.current = false;
     lastSyncedPayloadRef.current = null;
     setHasLoadedLocalState(false);
     setHasLoadedRemoteState(false);
@@ -171,7 +169,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       try {
         const payload = await readLocalHabitsPayload(userId, currentWeekId);
 
-        if (isMounted && activeUserIdRef.current === userId && payload && !hasAppliedRemotePayloadRef.current) {
+        if (isMounted && activeUserIdRef.current === userId && payload) {
           setHabits(payload.habits);
         }
       } catch (error) {
@@ -186,34 +184,10 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
     void loadHabits();
 
-    const unsubscribe = subscribeToUserHabitsState(
-      userId,
-      (remotePayload) => {
-        if (!isMounted || activeUserIdRef.current !== userId) {
-          return;
-        }
-
-        const normalizedPayload = normalizeHabitsPayload(remotePayload, currentWeekId);
-
-        if (normalizedPayload) {
-          hasAppliedRemotePayloadRef.current = true;
-          lastSyncedPayloadRef.current = serializePayload(normalizedPayload);
-          setHabits(normalizedPayload.habits);
-          void writeLocalHabitsPayload(userId, normalizedPayload).catch((error) => {
-            console.warn('Unable to update local habits cache.', error);
-          });
-        }
-
-        setHasLoadedRemoteState(true);
-      },
-      (error) => {
-        console.warn('Unable to sync habits with Firestore.', error);
-
-        if (isMounted && activeUserIdRef.current === userId) {
-          setHasLoadedRemoteState(true);
-        }
-      }
-    );
+    // TODO: Re-enable Firestore sync when ready for production.
+    // const unsubscribe = subscribeToUserHabitsState(...)
+    const unsubscribe = () => {};
+    setHasLoadedRemoteState(true);
 
     return () => {
       isMounted = false;
@@ -244,10 +218,8 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       console.warn('Unable to persist local habits cache.', error);
     });
 
-    void saveUserHabitsState(userId, payload).catch((error) => {
-      console.warn('Unable to persist habits to Firestore.', error);
-      lastSyncedPayloadRef.current = null;
-    });
+    // TODO: Re-enable Firestore sync when ready for production.
+    // saveUserHabitsState(userId, payload)
   }, [currentWeekId, habits, hasLoadedLocalState, hasLoadedRemoteState, user?.id]);
 
   const addHabit = (input: CreateHabitInput) => {
