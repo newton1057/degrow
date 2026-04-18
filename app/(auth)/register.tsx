@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -44,11 +43,6 @@ export default function RegisterScreen() {
     } catch (error) {
       Alert.alert(t('auth.signUpErrorTitle'), t(getFirebaseAuthErrorMessageKey(error)));
     }
-  };
-
-  const handleSocialRegister = () => {
-    void haptics.selectionAsync();
-    Alert.alert(t('auth.socialUnavailableTitle'), t('auth.socialUnavailableMessage'));
   };
 
   return (
@@ -117,29 +111,6 @@ export default function RegisterScreen() {
               </Text>
             </Pressable>
 
-            <View style={styles.separatorContainer}>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-              <Text style={[styles.separatorText, { color: colors.textMuted }]}>{t('auth.orContinueWith')}</Text>
-              <View style={[styles.separatorLine, { backgroundColor: colors.border }]} />
-            </View>
-
-            <View style={styles.socialContainer}>
-              <Pressable
-                style={[styles.socialButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}
-                onPress={handleSocialRegister}
-                disabled={isLoading}>
-                <Ionicons name="logo-google" size={20} color={colors.text} />
-                <Text style={[styles.socialButtonText, { color: colors.text }]}>{t('auth.continueWithGoogle')}</Text>
-              </Pressable>
-
-              <Pressable
-                style={[styles.socialButton, { backgroundColor: colors.text, borderColor: colors.text }]}
-                onPress={handleSocialRegister}
-                disabled={isLoading}>
-                <Ionicons name="logo-apple" size={20} color={colors.background} />
-                <Text style={[styles.socialButtonText, { color: colors.background }]}>{t('auth.continueWithApple')}</Text>
-              </Pressable>
-            </View>
           </View>
 
           <View style={styles.footerArea}>
@@ -229,35 +200,5 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 15,
     fontWeight: '700',
-  },
-  separatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 10,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-  },
-  separatorText: {
-    marginHorizontal: 10,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  socialContainer: {
-    gap: 12,
-  },
-  socialButton: {
-    height: 56,
-    borderRadius: 16,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-  },
-  socialButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

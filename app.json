@@ -2,7 +2,7 @@
   "expo": {
     "name": "DeGrow",
     "slug": "degrow",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icons/icon.png",
     "scheme": "degrow",
@@ -12,15 +12,12 @@
       "icon": "./assets/icons/icon.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.abgtechcapital.degrow",
-      "appleTeamId": "JSJ3K594F9"
+      "appleTeamId": "JSJ3K594F9",
+      "buildNumber": "2"
     },
     "android": {
       "permissions": [
         "android.permission.POST_NOTIFICATIONS",
-        "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS",
-        "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
@@ -31,7 +28,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.degrow"
+      "package": "com.abgtechcapital.degrow",
+      "versionCode": 2
     },
     "web": {
       "output": "static",

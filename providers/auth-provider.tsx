@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
 import {
     createUserWithEmailAndPassword,
+    deleteUser,
     signOut as firebaseSignOut,
     onAuthStateChanged,
     signInWithEmailAndPassword,
@@ -10,6 +11,7 @@ import {
 } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
+import { deleteUserAccountData } from '@/services/user-account';
 import { firebaseAuth } from '@/services/firebase-auth';
 import { uploadUserProfileImage } from '@/services/user-media';
 import {
@@ -33,12 +35,16 @@ type AuthContextValue = {
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (name: string, email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   updateProfile: (profile: Partial<Pick<User, 'avatarStoragePath' | 'avatarUri' | 'email' | 'name'>>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_STORAGE_URI = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}degrow-user.json` : null;
+const LEGACY_HABITS_STORAGE_URI = FileSystem.documentDirectory
+  ? `${FileSystem.documentDirectory}degrow-habits.json`
+  : null;
 
 function getDisplayNameFromEmail(email: string) {
   const fallback = 'Demo User';
@@ -84,6 +90,22 @@ async function readStoredUser() {
   } catch {
     return null;
   }
+}
+
+function getUserHabitsStorageUri(userId: string) {
+  return FileSystem.documentDirectory ? `${FileSystem.documentDirectory}degrow-habits-${userId}.json` : null;
+}
+
+async function clearLocalUserData(userId: string) {
+  const storageUris = [
+    AUTH_STORAGE_URI,
+    getUserHabitsStorageUri(userId),
+    LEGACY_HABITS_STORAGE_URI,
+  ].filter((storageUri): storageUri is string => Boolean(storageUri));
+
+  await Promise.all(
+    storageUris.map((storageUri) => FileSystem.deleteAsync(storageUri, { idempotent: true }))
+  );
 }
 
 function mapFirebaseUser(firebaseUser: FirebaseUser, storedUser: User | null = null): User {
@@ -241,6 +263,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    const currentUser = user;
+    const firebaseUser = firebaseAuth.currentUser;
+
+    if (!currentUser || !firebaseUser || firebaseUser.uid !== currentUser.id) {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      await deleteUserAccountData(currentUser.id, currentUser.avatarStoragePath);
+      await deleteUser(firebaseUser);
+      await clearLocalUserData(currentUser.id);
+      setUser(null);
+      router.replace('/(auth)/login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const updateProfile: AuthContextValue['updateProfile'] = async (profile) => {
     const currentUser = user;
 
@@ -287,6 +330,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signUp,
         signOut,
+        deleteAccount,
         updateProfile,
       }}>
       {children}

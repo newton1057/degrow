@@ -137,7 +137,7 @@ firebase deploy --only hosting
 <a href="https://apps.apple.com/app/degrow/id[TU_APP_ID]">
 
 <!-- Línea ~54 y ~58 -->
-<a href="https://play.google.com/store/apps/details?id=com.degrow">
+<a href="https://play.google.com/store/apps/details?id=com.abgtechcapital.degrow">
 <!-- Cambiar a: -->
 <a href="https://play.google.com/store/apps/details?id=[TU_PACKAGE_ID]">
 ```
@@ -150,7 +150,7 @@ firebase deploy --only hosting
 
 **Google Play**:
 1. Publicar app en Google Play Console
-2. El Package ID es el que definiste en `app.json`: `com.degrow` o similar
+2. El Package ID es el que definiste en `app.json`: `com.abgtechcapital.degrow`
 
 ---
 

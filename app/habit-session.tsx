@@ -15,7 +15,7 @@ import {
   scheduleHabitTimerNotification,
 } from '@/services/local-notifications';
 
-const SESSION_OPTIONS = [10, 15, 20, 30, 45, 60];
+const SESSION_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60];
 
 function formatTimer(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -224,6 +224,13 @@ export default function HabitSessionScreen() {
       : hasStarted
         ? t('timer.resume')
         : t('timer.start');
+  const timerHint = completedToday
+    ? t('timer.completedHint')
+    : isRunning
+      ? t('timer.runningHint')
+      : hasStarted
+        ? t('timer.pausedHint')
+        : t('timer.readyHint');
   const iconColor = habit.theme.iconColor ?? (isLight ? '#FFFFFF' : '#F6F8FB');
   const accentForeground = habit.theme.onAccent ?? '#FFFFFF';
   const shadeStart = isLight ? `${habit.theme.iconBg}25` : habit.theme.gradientStart;
@@ -327,6 +334,7 @@ export default function HabitSessionScreen() {
                 <View style={[styles.progressTrack, { backgroundColor: isLight ? colors.surfaceMuted : 'rgba(255,255,255,0.08)' }]}>
                   <View style={[styles.progressFill, { backgroundColor: habit.theme.accent, width: `${progress * 100}%` }]} />
                 </View>
+                <Text style={[styles.timerHint, { color: colors.textSoft }]}>{timerHint}</Text>
               </View>
 
               <View style={styles.actionRow}>
@@ -594,6 +602,14 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     letterSpacing: -0.15,
+    textAlign: 'center',
+  },
+  timerHint: {
+    marginTop: 14,
+    fontSize: 12.5,
+    fontWeight: '600',
+    lineHeight: 17,
+    maxWidth: 238,
     textAlign: 'center',
   },
   progressTrack: {

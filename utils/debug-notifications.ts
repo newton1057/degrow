@@ -101,6 +101,7 @@ export async function debugScheduleTestNotification() {
         sound: true,
       },
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5, // En 5 segundos
       },
     });

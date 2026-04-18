@@ -10,6 +10,7 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { TabBarBlurUnderlay } from '@/components/tab-bar-blur-underlay';
+import { useHaptics } from '@/hooks/use-haptics';
 import { useAuth } from '@/providers/auth-provider';
 import { useHabits } from '@/providers/habits-provider';
 import { useI18n } from '@/providers/language-provider';

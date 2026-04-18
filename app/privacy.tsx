@@ -39,7 +39,7 @@ export default function PrivacyScreen() {
   const { colors, resolvedTheme } = useAppTheme();
 
   const handleOpenTerms = () => {
-    const url = 'https://degrow.app/terms';
+    const url = 'https://degrow.app/terms.html';
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
         Linking.openURL(url);
@@ -53,7 +53,7 @@ export default function PrivacyScreen() {
   };
 
   const handleOpenPrivacyPolicy = () => {
-    const url = 'https://degrow.app/privacy';
+    const url = 'https://degrow.app/privacy.html';
     Linking.canOpenURL(url).then((supported) => {
       if (supported) {
         Linking.openURL(url);

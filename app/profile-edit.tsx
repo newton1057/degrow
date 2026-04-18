@@ -53,7 +53,7 @@ export default function ProfileEditScreen() {
           },
         ]
       );
-    } catch (error) {
+    } catch {
       void haptics.notificationAsync(haptics.NotificationFeedbackType.Error);
       Alert.alert(
         t('profileEdit.errorTitle'),

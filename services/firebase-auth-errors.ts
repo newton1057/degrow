@@ -18,6 +18,8 @@ export function getFirebaseAuthErrorMessageKey(error: unknown) {
       return 'auth.errorEmailAuthDisabled';
     case 'auth/weak-password':
       return 'auth.errorWeakPassword';
+    case 'auth/requires-recent-login':
+      return 'auth.errorRequiresRecentLogin';
     default:
       return 'auth.errorGeneric';
   }

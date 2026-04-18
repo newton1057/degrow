@@ -1,12 +1,14 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useI18n, type AppLanguage } from '@/providers/language-provider';
+import { useSettings } from '@/providers/settings-provider';
 import { useAppTheme, type ThemePreference } from '@/providers/theme-provider';
+import { getFirebaseAuthErrorMessageKey } from '@/services/firebase-auth-errors';
 
 type SettingToggleRowProps = {
   description?: string;
@@ -130,7 +132,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
   const { colors, resolvedTheme, themePreference, setThemePreference } = useAppTheme();
-  const { signOut } = useAuth();
+  const { deleteAccount, isLoading: isAccountLoading, signOut } = useAuth();
   const { settings, updateSettings } = useSettings();
 
   const handleToggleNotifications = async (value: boolean) => {
@@ -158,6 +160,30 @@ export default function SettingsScreen() {
         hapticsEnabled: value,
       },
     });
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('auth.deleteAccountTitle'),
+      t('auth.deleteAccountMessage'),
+      [
+        {
+          text: t('common.cancel'),
+          style: 'cancel',
+        },
+        {
+          text: t('auth.deleteAccountConfirm'),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteAccount();
+            } catch (error) {
+              Alert.alert(t('auth.deleteAccountErrorTitle'), t(getFirebaseAuthErrorMessageKey(error)));
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -296,14 +322,33 @@ export default function SettingsScreen() {
 
             <Pressable
               onPress={signOut}
+              disabled={isAccountLoading}
               style={({ pressed }) => [
                 styles.signOutButton,
                 { backgroundColor: colors.surface, borderColor: colors.border },
-                pressed && { opacity: 0.7 }
+                (pressed || isAccountLoading) && { opacity: 0.7 }
               ]}
             >
               <MaterialCommunityIcons name="logout" size={20} color="#FF453A" />
               <Text style={styles.signOutText}>{t('auth.signOut')}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleDeleteAccount}
+              disabled={isAccountLoading}
+              style={({ pressed }) => [
+                styles.deleteAccountButton,
+                { backgroundColor: colors.surface, borderColor: 'rgba(255,69,58,0.34)' },
+                (pressed || isAccountLoading) && { opacity: 0.7 }
+              ]}
+            >
+              <MaterialCommunityIcons name="account-remove-outline" size={20} color="#FF453A" />
+              <View style={styles.deleteAccountTextWrap}>
+                <Text style={styles.deleteAccountText}>{t('settings.rows.deleteAccountTitle')}</Text>
+                <Text style={[styles.deleteAccountDescription, { color: colors.textMuted }]}>
+                  {t('settings.rows.deleteAccountDescription')}
+                </Text>
+              </View>
             </Pressable>
           </ScrollView>
         </View>
@@ -505,5 +550,29 @@ const styles = StyleSheet.create({
     color: '#FF453A',
     fontSize: 16,
     fontWeight: '600',
+  },
+  deleteAccountButton: {
+    borderRadius: 16,
+    borderWidth: 1,
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  deleteAccountTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  deleteAccountText: {
+    color: '#FF453A',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  deleteAccountDescription: {
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

@@ -5,6 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { WEEK_DAY_KEYS, type DayKey } from '@/constants/habits';
+import { useHaptics } from '@/hooks/use-haptics';
 import { useI18n } from '@/providers/language-provider';
 import { useSettings } from '@/providers/settings-provider';
 import { useAppTheme } from '@/providers/theme-provider';

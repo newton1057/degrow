@@ -62,7 +62,7 @@ Antes de publicar, actualizar estos links en `index.html`:
 <a href="https://apps.apple.com/app/degrow/id[TU_APP_ID]">
 
 <!-- Google Play -->
-<a href="https://play.google.com/store/apps/details?id=com.degrow">
+<a href="https://play.google.com/store/apps/details?id=com.abgtechcapital.degrow">
 ```
 
 ## 🎨 Personalización

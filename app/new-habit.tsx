@@ -20,6 +20,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 
 import { WEEK_DAY_KEYS } from '@/constants/habits';
+import { useHaptics } from '@/hooks/use-haptics';
 import { useHabits } from '@/providers/habits-provider';
 import { DEFAULT_HABIT_NAME_VALUES, useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
@@ -28,7 +29,7 @@ const previewDates = ['02', '03', '04', '05', '06', '07', '08'];
 const WHEEL_ITEM_HEIGHT = 50;
 const WHEEL_VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS;
-const SESSION_MINUTE_OPTIONS = [10, 15, 20, 30, 45, 60];
+const SESSION_MINUTE_OPTIONS = [5, 10, 15, 20, 25, 30, 45, 60];
 
 const HOURS_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: String(i + 1) }));
 const MINUTES_DATA = Array.from({ length: 12 }, (_, i) => ({ value: i * 5, label: String(i * 5).padStart(2, '0') }));
@@ -182,9 +183,6 @@ function WheelColumn<T extends string | number>({
   textColor: string;
   accentColor: string;
   haptics: ReturnType<typeof useHaptics>;
-}) {
-  textColor: string;
-  accentColor: string;
 }) {
   const flatListRef = useRef<FlatList>(null);
   const lastSnappedIndex = useRef(-1);
@@ -355,7 +353,7 @@ export default function NewHabitScreen() {
   const [targetMinutes, setTargetMinutes] = useState(10);
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const snapPoints = useMemo(() => ['52%'], []);
-  const [selectedDays, setSelectedDays] = useState([true, false, true, true, false, true, false]);
+  const [selectedDays, setSelectedDays] = useState(WEEK_DAY_KEYS.map(() => true));
 
   const selectedTheme = themeOptions.find((theme) => theme.id === selectedThemeId) ?? themeOptions[0];
   const accentForeground = selectedTheme.onAccent ?? '#F6F9FE';

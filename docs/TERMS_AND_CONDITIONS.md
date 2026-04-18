@@ -118,8 +118,8 @@ You agree to indemnify and hold us harmless from any claims, damages, or expense
 
 ## 14. Governing Law
 
-- These terms are governed by the laws of [Your Jurisdiction]
-- Any disputes will be resolved in the courts of [Your Jurisdiction]
+- These terms are governed by applicable law
+- Any disputes will be resolved through the legally appropriate venue
 
 ## 15. Contact Information
 
