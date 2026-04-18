@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DeGrow - Build Better Habits, One Day at a Time. Track, build, and maintain habits that matter.">
+    <meta name="keywords" content="habits, habit tracker, productivity, self-improvement, goals">
+    <meta name="author" content="DeGrow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DeGrow - Build Better Habits">
+    <meta property="og:description" content="Track, build, and maintain habits that matter. Simple, beautiful, and effective.">
+    <meta property="og:image" content="/assets/og-image.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="DeGrow - Build Better Habits">
+    <meta property="twitter:description" content="Track, build, and maintain habits that matter. Simple, beautiful, and effective.">
+    
+    <title>DeGrow - Build Better Habits, One Day at a Time</title>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-light: #F3F4F8;
+            --surface-light: #FFFFFF;
+            --text-light: #111315;
+            --text-muted-light: rgba(17, 19, 21, 0.62);
+            --border-light: rgba(17, 19, 21, 0.08);
+            
+            --bg-dark: #000000;
+            --surface-dark: #0C0C0D;
+            --text-dark: #F5F5F7;
+            --text-muted-dark: rgba(255, 255, 255, 0.62);
+            --border-dark: rgba(255, 255, 255, 0.08);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-light);
+            line-height: 1.6;
+        }
+        
+        @media (prefers-color-scheme: dark) {
+            body {
+                background: var(--bg-dark);
+                color: var(--text-dark);
+            }
+            
+            .surface {
+                background: var(--surface-dark) !important;
+                border-color: var(--border-dark) !important;
+            }
+            
+            .text-muted {
+                color: var(--text-muted-dark) !important;
+            }
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header */
+        header {
+            padding: 60px 0 80px;
+            text-align: center;
+        }
+        
+        .logo {
+            width: 96px;
+            height: 96px;
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 28px;
+            margin: 0 auto 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+        }
+        
+        h1 {
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -1.2px;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+        
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-muted-light);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 24px;
+            border-radius: 16px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            border: 1px solid;
+            transition: opacity 0.2s;
+            cursor: pointer;
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+        
+        .btn-primary {
+            background: var(--text-light);
+            color: var(--bg-light);
+            border-color: var(--text-light);
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-light);
+            border-color: var(--border-light);
+        }
+        
+        /* Stats */
+        .stats {
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            padding: 32px;
+            display: flex;
+            justify-content: space-around;
+            margin: 60px auto;
+            max-width: 600px;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-muted-light);
+        }
+        
+        .stat-divider {
+            width: 1px;
+            background: var(--border-light);
+        }
+        
+        /* Section */
+        section {
+            margin: 80px 0;
+            text-align: center;
+        }
+        
+        .eyebrow {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted-light);
+            margin-bottom: 12px;
+        }
+        
+        h2 {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.8px;
+            margin-bottom: 12px;
+        }
+        
+        .section-subtitle {
+            font-size: 16px;
+            color: var(--text-muted-light);
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            margin-top: 40px;
+        }
+        
+        .feature-card {
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            padding: 24px;
+            text-align: left;
+        }
+        
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--bg-light);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        
+        .feature-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .feature-description {
+            font-size: 14px;
+            color: var(--text-muted-light);
+            line-height: 1.5;
+        }
+        
+        /* Steps */
+        .steps {
+            max-width: 700px;
+            margin: 40px auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        
+        .step {
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            gap: 20px;
+            text-align: left;
+        }
+        
+        .step-number {
+            width: 40px;
+            height: 40px;
+            background: var(--text-light);
+            color: var(--bg-light);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        
+        .step-content h3 {
+            font-size: 18px;
+            margin-bottom: 6px;
+        }
+        
+        .step-content p {
+            font-size: 14px;
+            color: var(--text-muted-light);
+        }
+        
+        /* Testimonials */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            margin-top: 40px;
+        }
+        
+        .testimonial {
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 24px;
+            padding: 28px;
+            text-align: left;
+        }
+        
+        .quote-icon {
+            font-size: 32px;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+        
+        .testimonial-quote {
+            font-size: 15px;
+            font-style: italic;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .testimonial-author {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .testimonial-role {
+            font-size: 13px;
+            color: var(--text-muted-light);
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            background: var(--surface-light);
+            border: 1px solid var(--border-light);
+            border-radius: 32px;
+            padding: 48px;
+            margin: 80px auto;
+            max-width: 700px;
+        }
+        
+        .cta-section h2 {
+            font-size: 28px;
+            margin-bottom: 16px;
+        }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 40px 0 20px;
+            color: var(--text-muted-light);
+            font-size: 13px;
+        }
+        
+        .footer-links {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        
+        .footer-links a {
+            color: var(--text-muted-light);
+            text-decoration: none;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 32px;
+            }
+            
+            h2 {
+                font-size: 24px;
+            }
+            
+            .stats {
+                flex-direction: column;
+                gap: 24px;
+            }
+            
+            .stat-divider {
+                display: none;
+            }
+            
+            .features-grid,
+            .testimonials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header / Hero -->
+        <header>
+            <div class="logo">🌱</div>
+            <h1>Build Better Habits,<br>One Day at a Time</h1>
+            <p class="subtitle">DeGrow helps you track, build, and maintain habits that matter. Simple, beautiful, and effective.</p>
+            <div class="cta-buttons">
+                <a href="https://apps.apple.com/app/degrow" class="btn btn-primary">
+                    <span>🍎</span> Download on iOS
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.degrow" class="btn btn-secondary">
+                    <span>📱</span> Get it on Android
+                </a>
+            </div>
+        </header>
+        
+        <!-- Stats -->
+        <div class="stats surface">
+            <div class="stat">
+                <div class="stat-value">10K+</div>
+                <div class="stat-label text-muted">Active Users</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <div class="stat-value">4.8</div>
+                <div class="stat-label text-muted">App Rating</div>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat">
+                <div class="stat-value">100K+</div>
+                <div class="stat-label text-muted">Habits Tracked</div>
+            </div>
+        </div>
+        
+        <!-- Features -->
+        <section>
+            <div class="eyebrow">FEATURES</div>
+            <h2>Everything You Need to Succeed</h2>
+            <p class="section-subtitle">Powerful features designed to help you build lasting habits.</p>
+            
+            <div class="features-grid">
+                <div class="feature-card surface">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">Track Your Progress</h3>
+                    <p class="feature-description">Visual weekly tracking makes it easy to see your consistency and build momentum.</p>
+                </div>
+                
+                <div class="feature-card surface">
+                    <div class="feature-icon">🔔</div>
+                    <h3 class="feature-title">Smart Reminders</h3>
+                    <p class="feature-description">Get timely notifications to stay on track with your daily habits.</p>
+                </div>
+                
+                <div class="feature-card surface">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Weekly Insights</h3>
+                    <p class="feature-description">Understand your patterns with detailed progress analytics and streaks.</p>
+                </div>
+                
+                <div class="feature-card surface">
+                    <div class="feature-icon">⏱️</div>
+                    <h3 class="feature-title">Focus Timer</h3>
+                    <p class="feature-description">Built-in timer to help you stay focused during habit sessions.</p>
+                </div>
+                
+                <div class="feature-card surface">
+                    <div class="feature-icon">🎨</div>
+                    <h3 class="feature-title">Beautiful Design</h3>
+                    <p class="feature-description">Customizable themes and colors to make habit tracking enjoyable.</p>
+                </div>
+                
+                <div class="feature-card surface">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">Privacy First</h3>
+                    <p class="feature-description">Your data stays yours. Secure, private, and always under your control.</p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- How It Works -->
+        <section>
+            <div class="eyebrow">HOW IT WORKS</div>
+            <h2>Start Building Habits in 3 Simple Steps</h2>
+            
+            <div class="steps">
+                <div class="step surface">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <h3>Create Your Habits</h3>
+                        <p>Add the habits you want to build. Choose icons, colors, and set your schedule.</p>
+                    </div>
+                </div>
+                
+                <div class="step surface">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <h3>Track Daily Progress</h3>
+                        <p>Mark habits as complete each day. Build streaks and see your progress grow.</p>
+                    </div>
+                </div>
+                
+                <div class="step surface">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <h3>Review & Improve</h3>
+                        <p>Analyze your weekly patterns and adjust your approach for better results.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Testimonials -->
+        <section>
+            <div class="eyebrow">TESTIMONIALS</div>
+            <h2>Loved by Thousands of Users</h2>
+            
+            <div class="testimonials-grid">
+                <div class="testimonial surface">
+                    <div class="quote-icon">"</div>
+                    <p class="testimonial-quote">DeGrow transformed how I approach my daily routine. The visual tracking keeps me motivated every single day.</p>
+                    <div class="testimonial-author">Sarah Johnson</div>
+                    <div class="testimonial-role text-muted">Product Designer</div>
+                </div>
+                
+                <div class="testimonial surface">
+                    <div class="quote-icon">"</div>
+                    <p class="testimonial-quote">Finally, a habit tracker that's both beautiful and functional. The weekly view is a game-changer.</p>
+                    <div class="testimonial-author">Michael Chen</div>
+                    <div class="testimonial-role text-muted">Software Engineer</div>
+                </div>
+                
+                <div class="testimonial surface">
+                    <div class="quote-icon">"</div>
+                    <p class="testimonial-quote">I've tried many habit apps, but DeGrow's simplicity and design make it the one I actually use daily.</p>
+                    <div class="testimonial-author">Emma Williams</div>
+                    <div class="testimonial-role text-muted">Entrepreneur</div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- CTA -->
+        <div class="cta-section surface">
+            <div style="font-size: 48px; margin-bottom: 16px;">🚀</div>
+            <h2>Ready to Transform Your Life?</h2>
+            <p class="section-subtitle">Join thousands of users building better habits with DeGrow.</p>
+            <div class="cta-buttons">
+                <a href="https://apps.apple.com/app/degrow" class="btn btn-primary">
+                    <span>🍎</span> App Store
+                </a>
+                <a href="https://play.google.com/store/apps/details?id=com.degrow" class="btn btn-primary">
+                    <span>📱</span> Google Play
+                </a>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <footer>
+            <p>© 2026 DeGrow. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="/privacy.html">Privacy Policy</a>
+                <span>•</span>
+                <a href="/terms.html">Terms of Service</a>
+                <span>•</span>
+                <a href="mailto:support@degrow.app">Contact</a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

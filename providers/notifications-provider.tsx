@@ -1,15 +1,16 @@
-import { useEffect, type ReactNode } from 'react';
 import { useRouter, type Href } from 'expo-router';
+import { useEffect, type ReactNode } from 'react';
 
 import { type HabitItem } from '@/constants/habits';
 import { useAuth } from '@/providers/auth-provider';
 import { useHabits } from '@/providers/habits-provider';
 import { useI18n } from '@/providers/language-provider';
+import { useSettings } from '@/providers/settings-provider';
 import {
-  addLocalNotificationListeners,
-  cancelHabitReminderNotifications,
-  configureLocalNotifications,
-  syncHabitReminderNotifications,
+    addLocalNotificationListeners,
+    cancelHabitReminderNotifications,
+    configureLocalNotifications,
+    syncHabitReminderNotifications,
 } from '@/services/local-notifications';
 
 function getHabitLabel(habit: HabitItem, t: (key: string) => string) {
@@ -25,6 +26,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { habits, completeHabitToday } = useHabits();
   const { language, t } = useI18n();
+  const { settings } = useSettings();
 
   useEffect(() => {
     let isMounted = true;
@@ -67,7 +69,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   }, [completeHabitToday, router]);
 
   useEffect(() => {
-    if (!user) {
+    // Si no hay usuario o las notificaciones están deshabilitadas, cancelar todas
+    if (!user || !settings.notifications.pushEnabled || !settings.notifications.dailyRemindersEnabled) {
       void cancelHabitReminderNotifications();
       return;
     }
@@ -80,7 +83,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         body: (habitTitle) => t('notifications.habitReminderBody', { habit: habitTitle }),
       },
     });
-  }, [habits, language, t, user]);
+  }, [habits, language, settings.notifications.dailyRemindersEnabled, settings.notifications.pushEnabled, t, user]);
 
   return children;
 }

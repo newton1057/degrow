@@ -11,6 +11,7 @@ import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { HabitsProvider } from '@/providers/habits-provider';
 import { LanguageProvider, useI18n } from '@/providers/language-provider';
 import { NotificationsProvider } from '@/providers/notifications-provider';
+import { SettingsProvider } from '@/providers/settings-provider';
 import { AppThemeProvider, useAppTheme } from '@/providers/theme-provider';
 
 export const unstable_settings = {
@@ -63,7 +64,11 @@ function RootLayoutNav() {
         <Stack.Screen name="new-habit" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="habit-session" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="settings" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="profile-edit" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="export-data" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="permissions" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="privacy" options={{ headerShown: false, animation: 'slide_from_right' }} />
+        <Stack.Screen name="start-of-week" options={{ headerShown: false, animation: 'slide_from_right' }} />
         <Stack.Screen name="name-migration" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: t('modal.title') }} />
       </Stack>
@@ -78,13 +83,15 @@ export default function RootLayout() {
       <LanguageProvider>
         <AppThemeProvider>
           <AuthProvider>
-            <HabitsProvider>
-              <NotificationsProvider>
-                <BottomSheetModalProvider>
-                  <RootLayoutNav />
-                </BottomSheetModalProvider>
-              </NotificationsProvider>
-            </HabitsProvider>
+            <SettingsProvider>
+              <HabitsProvider>
+                <NotificationsProvider>
+                  <BottomSheetModalProvider>
+                    <RootLayoutNav />
+                  </BottomSheetModalProvider>
+                </NotificationsProvider>
+              </HabitsProvider>
+            </SettingsProvider>
           </AuthProvider>
         </AppThemeProvider>
       </LanguageProvider>

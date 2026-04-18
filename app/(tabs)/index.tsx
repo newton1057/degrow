@@ -1,10 +1,9 @@
-import { StatusBar } from 'expo-status-bar';
+import { WEEK_DAY_KEYS, getTodayDayKey, type HabitItem } from '@/constants/habits';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { WEEK_DAY_KEYS, getTodayDayKey, type HabitItem } from '@/constants/habits';
 
 import { TabBarBlurUnderlay } from '@/components/tab-bar-blur-underlay';
 import { useHabits } from '@/providers/habits-provider';
@@ -168,6 +167,7 @@ export default function DeGrowScreen() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
   const { habits, toggleHabitDay, toggleHabitToday } = useHabits();
+  const haptics = useHaptics();
   const todayKey = getTodayDayKey();
 
   const completedTodayCount = habits.filter((habit) => habit.days.find((day) => day.key === todayKey)?.filled).length;
@@ -195,26 +195,26 @@ export default function DeGrowScreen() {
     const didToggle = toggleHabitToday(habitId);
 
     if (didToggle) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void haptics.notificationAsync(haptics.NotificationFeedbackType.Success);
       return;
     }
 
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleToggleDay = (habitId: string, dayKey: (typeof WEEK_DAY_KEYS)[number]) => {
     const didToggle = toggleHabitDay(habitId, dayKey);
 
     if (didToggle) {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      void haptics.impactAsync(haptics.ImpactFeedbackStyle.Medium);
       return;
     }
 
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    void haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
   };
 
   const handleOpenTimer = (habitId: string) => {
-    void Haptics.selectionAsync();
+    void haptics.selectionAsync();
     router.push({ pathname: '/habit-session', params: { habitId } } as unknown as Href);
   };
 
@@ -272,6 +272,29 @@ export default function DeGrowScreen() {
                 onOpenTimer={handleOpenTimer}
               />
             ))}
+
+            {habits.length === 0 && (
+              <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <View style={[styles.emptyIconWrap, { backgroundColor: colors.surfaceMuted }]}>
+                  <MaterialCommunityIcons name="rocket-launch-outline" size={42} color={colors.icon} />
+                </View>
+                <Text style={[styles.emptyTitle, { color: colors.text }]}>{t('home.emptyTitle')}</Text>
+                <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>{t('home.emptySubtitle')}</Text>
+                <Pressable
+                  onPress={() => {
+                    void haptics.impactAsync(haptics.ImpactFeedbackStyle.Medium);
+                    router.push('/new-habit');
+                  }}
+                  style={({ pressed }) => [
+                    styles.emptyButton,
+                    { backgroundColor: colors.tint },
+                    pressed && { opacity: 0.85 }
+                  ]}>
+                  <Ionicons name="add-circle" size={20} color={colors.background} />
+                  <Text style={[styles.emptyButtonText, { color: colors.background }]}>{t('home.createFirstHabit')}</Text>
+                </Pressable>
+              </View>
+            )}
           </ScrollView>
         </View>
         <TabBarBlurUnderlay />
@@ -501,5 +524,52 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
+  },
+  emptyState: {
+    borderRadius: 28,
+    borderWidth: 1,
+    backgroundColor: '#0C0C0D',
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: 32,
+    alignItems: 'center',
+    gap: 16,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: '#171719',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  emptyTitle: {
+    color: '#F5F5F7',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    color: 'rgba(255,255,255,0.62)',
+    fontSize: 14.5,
+    lineHeight: 21,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  emptyButton: {
+    marginTop: 8,
+    height: 52,
+    borderRadius: 26,
+    paddingHorizontal: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  emptyButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
 });

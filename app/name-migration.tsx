@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
@@ -26,6 +25,7 @@ export default function NameMigrationScreen() {
   const router = useRouter();
   const { colors, resolvedTheme } = useAppTheme();
   const { user, updateProfile, isLoading: isUpdating } = useAuth();
+  const haptics = useHaptics();
   const [name, setName] = useState(user?.name ?? '');
 
   const handleSave = async () => {
@@ -44,7 +44,7 @@ export default function NameMigrationScreen() {
   };
 
   const handleSkip = async () => {
-    void Haptics.selectionAsync();
+    void haptics.selectionAsync();
     await AsyncStorage.setItem(MIGRATION_KEY, 'true');
     router.replace('/(tabs)');
   };

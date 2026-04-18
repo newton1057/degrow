@@ -1,14 +1,13 @@
-import * as Haptics from 'expo-haptics';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { Image } from 'expo-image';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { StatusBar } from 'expo-status-bar';
 import { useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useMemo, useRef } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 
 import { TabBarBlurUnderlay } from '@/components/tab-bar-blur-underlay';
 import { useAuth } from '@/providers/auth-provider';
@@ -60,6 +59,7 @@ export default function ProfileScreen() {
   const { colors, resolvedTheme } = useAppTheme();
   const { user, updateProfile, isLoading: isUpdatingProfile } = useAuth();
   const { habits } = useHabits();
+  const haptics = useHaptics();
   const profileName = user?.name?.trim() || t('profile.defaultName');
   const profileEmail = user?.email?.trim() || t('profile.noEmail');
   const profileInitials = getInitials(profileName);
@@ -195,7 +195,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    void Haptics.selectionAsync();
+    void haptics.selectionAsync();
     photoSheetRef.current?.dismiss();
     setTimeout(() => {
       void action();
@@ -207,7 +207,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    void Haptics.selectionAsync();
+    void haptics.selectionAsync();
 
     if (!ensureImagePickerReady()) {
       return;
@@ -223,14 +223,9 @@ export default function ProfileScreen() {
         <View style={styles.contentColumn}>
           <View style={styles.header}>
             <Text style={[styles.screenTitle, { color: colors.text }]}>{t('profile.title')}</Text>
-            <View style={styles.headerActions}>
-              <Pressable onPress={() => router.push('/settings')} style={styles.iconAction}>
-                <Ionicons name="settings-outline" size={23} color={colors.icon} />
-              </Pressable>
-              <Pressable style={styles.iconAction}>
-                <Ionicons name="ellipsis-horizontal" size={24} color={colors.icon} />
-              </Pressable>
-            </View>
+            <Pressable onPress={() => router.push('/settings')} style={styles.iconAction}>
+              <Ionicons name="settings-outline" size={23} color={colors.icon} />
+            </Pressable>
           </View>
 
           <ScrollView
@@ -416,11 +411,6 @@ const styles = StyleSheet.create({
     fontSize: 19,
     fontWeight: '700',
     letterSpacing: -0.45,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
   },
   iconAction: {
     alignItems: 'center',

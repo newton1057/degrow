@@ -1,12 +1,12 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { StatusBar } from 'expo-status-bar';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { getTodayDayKey } from '@/constants/habits';
+import { useHaptics } from '@/hooks/use-haptics';
 import { useHabits } from '@/providers/habits-provider';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
@@ -30,6 +30,7 @@ export default function HabitSessionScreen() {
   const { habits, completeHabitToday } = useHabits();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
+  const haptics = useHaptics();
   const isLight = resolvedTheme === 'light';
 
   const habitId = Array.isArray(params.habitId) ? params.habitId[0] : params.habitId;
@@ -68,8 +69,8 @@ export default function HabitSessionScreen() {
     setEndTimeMs(null);
     completeHabitToday(habit.id);
     await cancelHabitTimerNotification(habit.id);
-    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [clearTimerInterval, completeHabitToday, habit]);
+    await haptics.notificationAsync(haptics.NotificationFeedbackType.Success);
+  }, [clearTimerInterval, completeHabitToday, habit, haptics]);
 
   const tick = useCallback(
     (targetEndTimeMs: number) => {
@@ -97,7 +98,7 @@ export default function HabitSessionScreen() {
     setEndTimeMs(nextEndTimeMs);
     intervalRef.current = setInterval(() => tick(nextEndTimeMs), 1000);
 
-    await Haptics.selectionAsync();
+    await haptics.selectionAsync();
     await scheduleHabitTimerNotification({
       habitId: habit.id,
       seconds: remainingSeconds,
@@ -106,7 +107,7 @@ export default function HabitSessionScreen() {
         body: t('notifications.timerCompleteBody', { habit: habitLabel, minutes: String(selectedMinutes) }),
       },
     });
-  }, [clearTimerInterval, habit, habitLabel, remainingSeconds, selectedMinutes, t, tick]);
+  }, [clearTimerInterval, habit, habitLabel, haptics, remainingSeconds, selectedMinutes, t, tick]);
 
   const pauseTimer = useCallback(async () => {
     if (!habit) {
@@ -117,8 +118,8 @@ export default function HabitSessionScreen() {
     setIsRunning(false);
     setEndTimeMs(null);
     await cancelHabitTimerNotification(habit.id);
-    await Haptics.selectionAsync();
-  }, [clearTimerInterval, habit]);
+    await haptics.selectionAsync();
+  }, [clearTimerInterval, habit, haptics]);
 
   const resetTimer = useCallback(async () => {
     if (!habit) {
@@ -133,8 +134,8 @@ export default function HabitSessionScreen() {
     setCompleted(false);
     setEndTimeMs(null);
     await cancelHabitTimerNotification(habit.id);
-    await Haptics.selectionAsync();
-  }, [clearTimerInterval, habit, selectedMinutes]);
+    await haptics.selectionAsync();
+  }, [clearTimerInterval, habit, haptics, selectedMinutes]);
 
   const finishEarly = useCallback(async () => {
     await completeTimer();
@@ -179,7 +180,7 @@ export default function HabitSessionScreen() {
       await cancelHabitTimerNotification(habit.id);
     }
 
-    await Haptics.selectionAsync();
+    await haptics.selectionAsync();
   };
 
   if (!habit) {

@@ -10,7 +10,7 @@ export type UserHabitsState = {
 };
 
 function getUserHabitsStateRef(userId: string) {
-  return doc(firestore, 'users', userId, 'appState', 'habits');
+  return doc(firestore, 'users', userId, 'habits', 'current');
 }
 
 function mapHabitsState(data: Record<string, unknown> | undefined): UserHabitsState | null {

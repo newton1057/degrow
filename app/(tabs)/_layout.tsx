@@ -1,17 +1,17 @@
-import {
-  Icon,
-  Label,
-  NativeTabs,
-  type NativeTabsBlurEffect,
-  type NativeTabsTriggerTabBarProps,
-} from 'expo-router/unstable-native-tabs';
 import { Redirect } from 'expo-router';
+import {
+    Icon,
+    Label,
+    NativeTabs,
+    type NativeTabsBlurEffect,
+    type NativeTabsTriggerTabBarProps,
+} from 'expo-router/unstable-native-tabs';
 import React from 'react';
 import { Platform, View } from 'react-native';
 
+import { useAuth } from '@/providers/auth-provider';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
-import { useAuth } from '@/providers/auth-provider';
 
 export default function TabLayout() {
   const { t } = useI18n();
@@ -82,7 +82,7 @@ export default function TabLayout() {
       tintColor={tabGlassTintColor}>
       <NativeTabs.Trigger name="index" disableScrollToTop options={stableScrollEdgeOptions}>
         <NativeTabs.Trigger.TabBar {...tabBarAppearance} />
-        <Icon sf={{ default: 'list.bullet', selected: 'list.bullet' }} selectedColor={selectedTabColor} />
+        <Icon sf={{ default: 'checkmark.circle', selected: 'checkmark.circle.fill' }} selectedColor={selectedTabColor} />
         <Label selectedStyle={{ color: selectedTabColor, fontWeight: '700' }}>{t('tabs.listView')}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile" disableScrollToTop options={stableScrollEdgeOptions}>

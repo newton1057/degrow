@@ -50,31 +50,57 @@ const JS_DAY_TO_DAY_KEY: Record<number, DayKey> = {
   6: 'sat',
 };
 
+const DAY_KEY_TO_JS_DAY: Record<DayKey, number> = {
+  sun: 0,
+  mon: 1,
+  tue: 2,
+  wed: 3,
+  thu: 4,
+  fri: 5,
+  sat: 6,
+};
+
 export function getTodayDayKey(date = new Date()): DayKey {
   return JS_DAY_TO_DAY_KEY[date.getDay()];
 }
 
-export function getWeekStartDate(date = new Date()) {
+export function getWeekStartDate(date = new Date(), startOfWeek: DayKey = 'sat') {
   const start = new Date(date);
   const currentDay = date.getDay();
-  const daysSinceSaturday = currentDay === 6 ? 0 : currentDay + 1;
+  const startDayNumber = DAY_KEY_TO_JS_DAY[startOfWeek];
+
+  let daysSinceStart = currentDay - startDayNumber;
+  if (daysSinceStart < 0) {
+    daysSinceStart += 7;
+  }
 
   start.setHours(0, 0, 0, 0);
-  start.setDate(date.getDate() - daysSinceSaturday);
+  start.setDate(date.getDate() - daysSinceStart);
 
   return start;
 }
 
-export function getCurrentWeekId(date = new Date()) {
-  const start = getWeekStartDate(date);
+export function getCurrentWeekId(date = new Date(), startOfWeek: DayKey = 'sat') {
+  const start = getWeekStartDate(date, startOfWeek);
 
   return `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
 }
 
-export function buildWeekDays(filledByDay: Partial<Record<DayKey, boolean>> = {}, date = new Date()): DayItem[] {
-  const weekStart = getWeekStartDate(date);
+export function buildWeekDays(
+  filledByDay: Partial<Record<DayKey, boolean>> = {},
+  date = new Date(),
+  startOfWeek: DayKey = 'sat'
+): DayItem[] {
+  const weekStart = getWeekStartDate(date, startOfWeek);
+  const startDayIndex = WEEK_DAY_KEYS.indexOf(startOfWeek);
 
-  return WEEK_DAY_KEYS.map((key, index) => {
+  // Reordenar días para que empiecen con startOfWeek
+  const orderedKeys = [
+    ...WEEK_DAY_KEYS.slice(startDayIndex),
+    ...WEEK_DAY_KEYS.slice(0, startDayIndex),
+  ];
+
+  return orderedKeys.map((key, index) => {
     const dayDate = new Date(weekStart);
     dayDate.setDate(weekStart.getDate() + index);
 
@@ -105,96 +131,3 @@ export function getHabitTitleKeyFallback(id: string): HabitTitleKey | undefined 
 
   return lookup[id];
 }
-
-export const defaultHabits: HabitItem[] = [
-  {
-    id: 'seed-read-book',
-    titleKey: 'habits.readBook',
-    icon: 'book-open-page-variant-outline',
-    completionVariant: 'light',
-    scheduledDays: [...WEEK_DAY_KEYS],
-    reminderEnabled: true,
-    reminderMinutes: 19 * 60,
-    targetMinutes: 10,
-    theme: {
-      iconBg: '#5DA8E8',
-      accent: '#78BDF7',
-      gradientStart: 'rgba(23,60,96,0.88)',
-      gradientMid: 'rgba(8,19,34,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: buildWeekDays({ tue: true, wed: true, fri: true }),
-  },
-  {
-    id: 'seed-go-to-gym',
-    titleKey: 'habits.goToGym',
-    icon: 'dumbbell',
-    completionVariant: 'dark',
-    scheduledDays: ['sat', 'mon', 'wed', 'fri'],
-    reminderEnabled: true,
-    reminderMinutes: 18 * 60,
-    targetMinutes: 45,
-    theme: {
-      iconBg: '#D2A12C',
-      accent: '#D8AA38',
-      gradientStart: 'rgba(73,52,16,0.88)',
-      gradientMid: 'rgba(28,20,6,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: buildWeekDays({ sat: true, mon: true, wed: true }),
-  },
-  {
-    id: 'seed-homemade-food-only',
-    titleKey: 'habits.homemadeFoodOnly',
-    icon: 'silverware-fork-knife',
-    completionVariant: 'dark',
-    scheduledDays: [...WEEK_DAY_KEYS],
-    reminderEnabled: false,
-    reminderMinutes: 13 * 60,
-    targetMinutes: 20,
-    theme: {
-      iconBg: '#D67C50',
-      accent: '#E08A5C',
-      gradientStart: 'rgba(79,40,24,0.88)',
-      gradientMid: 'rgba(32,16,9,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: buildWeekDays({ mon: true, tue: true, thu: true }),
-  },
-  {
-    id: 'seed-six-hours-sleep',
-    titleKey: 'habits.sixHoursSleep',
-    icon: 'moon-waning-crescent',
-    completionVariant: 'light',
-    scheduledDays: [...WEEK_DAY_KEYS],
-    reminderEnabled: true,
-    reminderMinutes: 23 * 60,
-    targetMinutes: 10,
-    theme: {
-      iconBg: '#D86C8E',
-      accent: '#E784A3',
-      gradientStart: 'rgba(79,23,39,0.88)',
-      gradientMid: 'rgba(31,10,18,0.92)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: buildWeekDays({ tue: true, fri: true }),
-  },
-  {
-    id: 'seed-mindfulness-practices',
-    titleKey: 'habits.mindfulnessPractices',
-    icon: 'leaf',
-    completionVariant: 'dark',
-    scheduledDays: ['sat', 'sun', 'tue', 'thu', 'fri'],
-    reminderEnabled: true,
-    reminderMinutes: 7 * 60,
-    targetMinutes: 10,
-    theme: {
-      iconBg: '#1FA052',
-      accent: '#2DB860',
-      gradientStart: 'rgba(12,63,31,0.90)',
-      gradientMid: 'rgba(7,24,12,0.93)',
-      gradientEnd: 'rgba(0,0,0,0.96)',
-    },
-    days: buildWeekDays({ sat: true, tue: true, fri: true }),
-  },
-];

@@ -4,16 +4,16 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState, type R
 
 import {
     buildWeekDays,
-    defaultHabits,
     filledMapFromDays,
     getCurrentWeekId,
     getHabitTitleKeyFallback,
     getTodayDayKey,
     type DayKey,
     type HabitItem,
-    type HabitTheme,
+    type HabitTheme
 } from '@/constants/habits';
 import { useAuth } from '@/providers/auth-provider';
+import { useSettings } from '@/providers/settings-provider';
 import {
     saveUserHabitsState,
     subscribeToUserHabitsState,
@@ -47,9 +47,9 @@ const LEGACY_HABITS_STORAGE_URI = FileSystem.documentDirectory
 
 const HabitsContext = createContext<HabitsContextValue | null>(null);
 
-function sanitizeHabit(habit: HabitItem): HabitItem {
+function sanitizeHabit(habit: HabitItem, startOfWeek: DayKey = 'sat'): HabitItem {
   const titleKey = habit.titleKey ?? getHabitTitleKeyFallback(habit.id);
-  const days = habit.days?.length ? habit.days : buildWeekDays();
+  const days = habit.days?.length ? habit.days : buildWeekDays({}, new Date(), startOfWeek);
   const scheduledDays = habit.scheduledDays?.length ? habit.scheduledDays : days.map((day) => day.key);
 
   return {
@@ -63,10 +63,10 @@ function sanitizeHabit(habit: HabitItem): HabitItem {
   };
 }
 
-function resetHabitForCurrentWeek(habit: HabitItem) {
+function resetHabitForCurrentWeek(habit: HabitItem, startOfWeek: DayKey = 'sat') {
   return {
     ...habit,
-    days: buildWeekDays(),
+    days: buildWeekDays({}, new Date(), startOfWeek),
   };
 }
 
@@ -80,7 +80,8 @@ function serializePayload(payload: StoredHabitsPayload) {
 
 function normalizeHabitsPayload(
   payload: StoredHabitsPayload | HabitItem[] | null,
-  currentWeekId: string
+  currentWeekId: string,
+  startOfWeek: DayKey = 'sat'
 ): StoredHabitsPayload | null {
   if (!payload) {
     return null;
@@ -93,18 +94,18 @@ function normalizeHabitsPayload(
   }
 
   const storedWeekId = Array.isArray(payload) ? currentWeekId : payload.weekId;
-  const normalizedHabits = storedHabits.map(sanitizeHabit);
+  const normalizedHabits = storedHabits.map(h => sanitizeHabit(h, startOfWeek));
 
   return {
     weekId: currentWeekId,
     habits:
       storedWeekId === currentWeekId
         ? normalizedHabits
-        : normalizedHabits.map(resetHabitForCurrentWeek),
+        : normalizedHabits.map(h => resetHabitForCurrentWeek(h, startOfWeek)),
   };
 }
 
-async function readLocalHabitsPayload(userId: string, currentWeekId: string) {
+async function readLocalHabitsPayload(userId: string, currentWeekId: string, startOfWeek: DayKey = 'sat') {
   const storageUris = [getUserHabitsStorageUri(userId), LEGACY_HABITS_STORAGE_URI].filter(
     (storageUri): storageUri is string => Boolean(storageUri)
   );
@@ -118,7 +119,7 @@ async function readLocalHabitsPayload(userId: string, currentWeekId: string) {
 
     const content = await FileSystem.readAsStringAsync(storageUri);
     const parsed = JSON.parse(content) as StoredHabitsPayload | HabitItem[];
-    const payload = normalizeHabitsPayload(parsed, currentWeekId);
+    const payload = normalizeHabitsPayload(parsed, currentWeekId, startOfWeek);
 
     if (payload) {
       return payload;
@@ -140,13 +141,16 @@ async function writeLocalHabitsPayload(userId: string, payload: StoredHabitsPayl
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
-  const [habits, setHabits] = useState<HabitItem[]>(defaultHabits);
+  const { settings } = useSettings();
+  const [habits, setHabits] = useState<HabitItem[]>([]);
   const [hasLoadedLocalState, setHasLoadedLocalState] = useState(false);
   const [hasLoadedRemoteState, setHasLoadedRemoteState] = useState(false);
-  const currentWeekId = useMemo(() => getCurrentWeekId(), []);
+  const startOfWeek = settings.experience.startOfWeek;
+  const currentWeekId = useMemo(() => getCurrentWeekId(new Date(), startOfWeek), [startOfWeek]);
   const activeUserIdRef = useRef<string | null>(null);
   const hasAppliedRemotePayloadRef = useRef(false);
   const lastSyncedPayloadRef = useRef<string | null>(null);
+  const previousWeekIdRef = useRef<string>(currentWeekId);
 
   useEffect(() => {
     let isMounted = true;
@@ -159,7 +163,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
     setHasLoadedRemoteState(false);
 
     if (!userId) {
-      setHabits(defaultHabits);
+      setHabits([]);
       setHasLoadedLocalState(true);
       setHasLoadedRemoteState(true);
       return () => {
@@ -169,7 +173,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
     const loadHabits = async () => {
       try {
-        const payload = await readLocalHabitsPayload(userId, currentWeekId);
+        const payload = await readLocalHabitsPayload(userId, currentWeekId, startOfWeek);
 
         if (isMounted && activeUserIdRef.current === userId && payload) {
           setHabits(payload.habits);
@@ -193,7 +197,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        const normalizedPayload = normalizeHabitsPayload(remotePayload, currentWeekId);
+        const normalizedPayload = normalizeHabitsPayload(remotePayload, currentWeekId, startOfWeek);
 
         if (normalizedPayload) {
           hasAppliedRemotePayloadRef.current = true;
@@ -219,7 +223,28 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       unsubscribe();
     };
-  }, [currentWeekId, user?.id]);
+  }, [currentWeekId, startOfWeek, user?.id]);
+
+  // Detectar cambio de semana y reiniciar progreso
+  useEffect(() => {
+    if (!hasLoadedLocalState || !hasLoadedRemoteState) {
+      return;
+    }
+
+    if (previousWeekIdRef.current !== currentWeekId) {
+      console.log('📅 Week changed, resetting habit progress:', previousWeekIdRef.current, '→', currentWeekId);
+      
+      // Reiniciar días de todos los hábitos para la nueva semana
+      setHabits((currentHabits) =>
+        currentHabits.map((habit) => ({
+          ...habit,
+          days: buildWeekDays({}, new Date(), startOfWeek),
+        }))
+      );
+
+      previousWeekIdRef.current = currentWeekId;
+    }
+  }, [currentWeekId, hasLoadedLocalState, hasLoadedRemoteState, startOfWeek]);
 
   useEffect(() => {
     const userId = user?.id;
@@ -261,7 +286,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       reminderEnabled: input.reminderEnabled,
       reminderMinutes: input.reminderMinutes,
       targetMinutes: input.targetMinutes,
-      days: buildWeekDays(),
+      days: buildWeekDays({}, new Date(), startOfWeek),
     };
 
     setHabits((current) => [nextHabit, ...current]);
@@ -286,7 +311,9 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
             {
               ...filledMapFromDays(habit.days),
               [dayKey]: !habit.days.find((day) => day.key === dayKey)?.filled,
-            }
+            },
+            new Date(),
+            startOfWeek
           ),
         };
       })
@@ -311,7 +338,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
           days: buildWeekDays({
             ...filledMapFromDays(habit.days),
             [dayKey]: filled,
-          }),
+          }, new Date(), startOfWeek),
         };
       })
     );

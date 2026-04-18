@@ -1,23 +1,22 @@
-import { StatusBar } from 'expo-status-bar';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  FlatList,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
+    FlatList,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    View,
+    type NativeScrollEvent,
+    type NativeSyntheticEvent,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { BottomSheetBackdrop, BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
-import type { BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 
 
 import { WEEK_DAY_KEYS } from '@/constants/habits';
@@ -175,10 +174,15 @@ function WheelColumn<T extends string | number>({
   onValueChange,
   textColor,
   accentColor,
+  haptics,
 }: {
   data: WheelItem<T>[];
   selectedValue: T;
   onValueChange: (value: T) => void;
+  textColor: string;
+  accentColor: string;
+  haptics: ReturnType<typeof useHaptics>;
+}) {
   textColor: string;
   accentColor: string;
 }) {
@@ -215,10 +219,10 @@ function WheelColumn<T extends string | number>({
       if (index !== lastSnappedIndex.current) {
         lastSnappedIndex.current = index;
         onValueChange(data[index].value);
-        void Haptics.selectionAsync();
+        void haptics.selectionAsync();
       }
     },
-    [data, onValueChange],
+    [data, haptics, onValueChange],
   );
 
   const handleScrollBeginDrag = useCallback(() => {
@@ -340,6 +344,7 @@ export default function NewHabitScreen() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
   const { addHabit } = useHabits();
+  const haptics = useHaptics();
   const defaultHabitName = t('newHabit.defaults.habitName');
   const [habitName, setHabitName] = useState<string>(DEFAULT_HABIT_NAME_VALUES[0]);
   const [selectedIcon, setSelectedIcon] =
@@ -422,7 +427,7 @@ export default function NewHabitScreen() {
 
   const handleCreateHabit = () => {
     if (!canCreateHabit) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      void haptics.notificationAsync(haptics.NotificationFeedbackType.Warning);
       return;
     }
 
@@ -445,7 +450,7 @@ export default function NewHabitScreen() {
       targetMinutes,
     });
 
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void haptics.notificationAsync(haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
@@ -745,6 +750,7 @@ export default function NewHabitScreen() {
               onValueChange={setWheelHour}
               textColor={colors.text}
               accentColor={colors.text}
+              haptics={haptics}
             />
 
             {/* Colon separator */}
@@ -759,6 +765,7 @@ export default function NewHabitScreen() {
               onValueChange={setWheelMinute}
               textColor={colors.text}
               accentColor={colors.text}
+              haptics={haptics}
             />
 
             {/* AM / PM column */}
@@ -768,6 +775,7 @@ export default function NewHabitScreen() {
               onValueChange={setWheelPeriod as (v: string) => void}
               textColor={colors.text}
               accentColor={colors.text}
+              haptics={haptics}
             />
 
             {/* Top fade overlay */}

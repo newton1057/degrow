@@ -1,13 +1,12 @@
-import { StatusBar } from 'expo-status-bar';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { StatusBar } from 'expo-status-bar';
 import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { useAuth } from '@/providers/auth-provider';
 import { useI18n, type AppLanguage } from '@/providers/language-provider';
 import { useAppTheme, type ThemePreference } from '@/providers/theme-provider';
-import { useAuth } from '@/providers/auth-provider';
 
 type SettingToggleRowProps = {
   description?: string;
@@ -132,10 +131,34 @@ export default function SettingsScreen() {
   const { language, setLanguage, t } = useI18n();
   const { colors, resolvedTheme, themePreference, setThemePreference } = useAppTheme();
   const { signOut } = useAuth();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [habitRemindersEnabled, setHabitRemindersEnabled] = useState(true);
-  const [hapticsEnabled, setHapticsEnabled] = useState(true);
-  const [weeklyReviewEnabled, setWeeklyReviewEnabled] = useState(false);
+  const { settings, updateSettings } = useSettings();
+
+  const handleToggleNotifications = async (value: boolean) => {
+    await updateSettings({
+      notifications: {
+        ...settings.notifications,
+        pushEnabled: value,
+      },
+    });
+  };
+
+  const handleToggleDailyReminders = async (value: boolean) => {
+    await updateSettings({
+      notifications: {
+        ...settings.notifications,
+        dailyRemindersEnabled: value,
+      },
+    });
+  };
+
+  const handleToggleHaptics = async (value: boolean) => {
+    await updateSettings({
+      experience: {
+        ...settings.experience,
+        hapticsEnabled: value,
+      },
+    });
+  };
 
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
@@ -168,23 +191,24 @@ export default function SettingsScreen() {
                 icon="bell-badge-outline"
                 title={t('settings.rows.pushNotificationsTitle')}
                 description={t('settings.rows.pushNotificationsDescription')}
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
+                value={settings.notifications.pushEnabled}
+                onValueChange={handleToggleNotifications}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingToggleRow
                 icon="clock-outline"
                 title={t('settings.rows.dailyHabitRemindersTitle')}
                 description={t('settings.rows.dailyHabitRemindersDescription')}
-                value={habitRemindersEnabled}
-                onValueChange={setHabitRemindersEnabled}
+                value={settings.notifications.dailyRemindersEnabled}
+                onValueChange={handleToggleDailyReminders}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingValueRow
                 icon="calendar-start"
                 title={t('settings.rows.startOfWeekTitle')}
                 description={t('settings.rows.startOfWeekDescription')}
-                value={t('daysFull.sat')}
+                value={t(`daysFull.${settings.experience.startOfWeek}`)}
+                onPress={() => router.push('/start-of-week')}
               />
             </Section>
 
@@ -193,16 +217,8 @@ export default function SettingsScreen() {
                 icon="vibrate"
                 title={t('settings.rows.hapticsTitle')}
                 description={t('settings.rows.hapticsDescription')}
-                value={hapticsEnabled}
-                onValueChange={setHapticsEnabled}
-              />
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
-              <SettingToggleRow
-                icon="chart-timeline-variant"
-                title={t('settings.rows.weeklyReviewTitle')}
-                description={t('settings.rows.weeklyReviewDescription')}
-                value={weeklyReviewEnabled}
-                onValueChange={setWeeklyReviewEnabled}
+                value={settings.experience.hapticsEnabled}
+                onValueChange={handleToggleHaptics}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <View style={styles.preferenceBlock}>
@@ -250,6 +266,7 @@ export default function SettingsScreen() {
                 title={t('settings.rows.profileTitle')}
                 description={t('settings.rows.profileDescription')}
                 value={t('settings.values.personal')}
+                onPress={() => router.push('/profile-edit')}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingValueRow
@@ -257,6 +274,7 @@ export default function SettingsScreen() {
                 title={t('settings.rows.exportDataTitle')}
                 description={t('settings.rows.exportDataDescription')}
                 value={t('settings.values.available')}
+                onPress={() => router.push('/export-data')}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingValueRow
@@ -272,6 +290,7 @@ export default function SettingsScreen() {
                 title={t('settings.rows.privacyTitle')}
                 description={t('settings.rows.privacyDescription')}
                 value={t('settings.values.review')}
+                onPress={() => router.push('/privacy')}
               />
             </Section>
 

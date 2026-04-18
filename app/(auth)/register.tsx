@@ -1,28 +1,29 @@
-import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import * as Haptics from 'expo-haptics';
+import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 
+import { useHaptics } from '@/hooks/use-haptics';
+import { useAuth } from '@/providers/auth-provider';
 import { useI18n } from '@/providers/language-provider';
 import { useAppTheme } from '@/providers/theme-provider';
-import { useAuth } from '@/providers/auth-provider';
 import { getFirebaseAuthErrorMessageKey } from '@/services/firebase-auth-errors';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const haptics = useHaptics();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
   const { signUp, isLoading } = useAuth();
@@ -31,7 +32,7 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    void haptics.impactAsync(haptics.ImpactFeedbackStyle.Medium);
 
     if (!name.trim() || !email.trim() || !password) {
       Alert.alert(t('auth.requiredFieldsTitle'), t('auth.requiredFieldsMessage'));
@@ -46,7 +47,7 @@ export default function RegisterScreen() {
   };
 
   const handleSocialRegister = () => {
-    void Haptics.selectionAsync();
+    void haptics.selectionAsync();
     Alert.alert(t('auth.socialUnavailableTitle'), t('auth.socialUnavailableMessage'));
   };
 
@@ -145,7 +146,7 @@ export default function RegisterScreen() {
             <Text style={[styles.footerText, { color: colors.textMuted }]}>
               {t('auth.hasAccount')}
             </Text>
-            <Pressable onPress={() => { void Haptics.selectionAsync(); router.back(); }}>
+            <Pressable onPress={() => { void haptics.selectionAsync(); router.back(); }}>
               <Text style={[styles.footerLink, { color: colors.tint }]}>{t('auth.goToLogIn')}</Text>
             </Pressable>
           </View>
