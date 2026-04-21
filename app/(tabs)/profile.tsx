@@ -5,10 +5,11 @@ import { Image } from 'expo-image';
 import { requireOptionalNativeModule } from 'expo-modules-core';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GuestGuardModal } from '@/components/guest-guard-modal';
 import { TabBarBlurUnderlay } from '@/components/tab-bar-blur-underlay';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useAuth } from '@/providers/auth-provider';
@@ -58,15 +59,16 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, updateProfile, isLoading: isUpdatingProfile } = useAuth();
+  const { user, updateProfile, isLoading: isUpdatingProfile, isGuest } = useAuth();
   const { habits } = useHabits();
   const haptics = useHaptics();
-  const profileName = user?.name?.trim() || t('profile.defaultName');
-  const profileEmail = user?.email?.trim() || t('profile.noEmail');
-  const profileInitials = getInitials(profileName);
-  const hasAvatar = Boolean(user?.avatarUri);
+  const profileName = isGuest ? t('guest.label') : (user?.name?.trim() || t('profile.defaultName'));
+  const profileEmail = isGuest ? t('guest.profileEmail') : (user?.email?.trim() || t('profile.noEmail'));
+  const profileInitials = isGuest ? 'G' : getInitials(profileName);
+  const hasAvatar = Boolean(user?.avatarUri) && !isGuest;
   const photoSheetRef = useRef<BottomSheetModal>(null);
   const photoSheetSnapPoints = useMemo(() => ['32%'], []);
+  const [showGuestGuard, setShowGuestGuard] = useState(false);
 
   const totalCompleted = habits.reduce((acc, habit) => {
     return acc + habit.days.filter((day) => day.filled).length;
@@ -208,6 +210,12 @@ export default function ProfileScreen() {
       return;
     }
 
+    // Guard: guests can't upload photos (requires cloud storage)
+    if (isGuest) {
+      setShowGuestGuard(true);
+      return;
+    }
+
     void haptics.selectionAsync();
 
     if (!ensureImagePickerReady()) {
@@ -245,15 +253,17 @@ export default function ProfileScreen() {
                   disabled={isUpdatingProfile}
                   style={({ pressed }) => [styles.avatarButton, (pressed || isUpdatingProfile) && { opacity: 0.78 }]}>
                   <View style={[styles.avatarWrap, { backgroundColor: colors.surfaceMuted }]}>
-                    {user?.avatarUri ? (
+                    {user?.avatarUri && !isGuest ? (
                       <Image source={{ uri: user.avatarUri }} style={styles.avatarImage} contentFit="cover" />
                     ) : (
                       <Text style={[styles.avatarText, { color: colors.text }]}>{profileInitials}</Text>
                     )}
                   </View>
-                  <View style={[styles.avatarBadge, { backgroundColor: colors.text, borderColor: colors.surface }]}>
-                    <Ionicons name="camera" size={13} color={colors.background} />
-                  </View>
+                  {!isGuest && (
+                    <View style={[styles.avatarBadge, { backgroundColor: colors.text, borderColor: colors.surface }]}>
+                      <Ionicons name="camera" size={13} color={colors.background} />
+                    </View>
+                  )}
                 </Pressable>
 
                 <View style={styles.heroIdentity}>
@@ -264,6 +274,22 @@ export default function ProfileScreen() {
               </View>
 
               <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>{t('profile.heroSubtitle')}</Text>
+
+              {/* Guest prompt in profile card */}
+              {isGuest && (
+                <Pressable
+                  onPress={() => setShowGuestGuard(true)}
+                  style={({ pressed }) => [
+                    styles.guestProfileCta,
+                    { backgroundColor: `${colors.tint}15`, borderColor: `${colors.tint}30` },
+                    pressed && { opacity: 0.8 },
+                  ]}>
+                  <Ionicons name="person-add-outline" size={16} color={colors.tint} />
+                  <Text style={[styles.guestProfileCtaText, { color: colors.tint }]}>
+                    {t('guest.createAccountShort')}
+                  </Text>
+                </Pressable>
+              )}
             </View>
 
             <View style={styles.metricsRow}>
@@ -379,6 +405,8 @@ export default function ProfileScreen() {
           </View>
         </BottomSheetView>
       </BottomSheetModal>
+
+      <GuestGuardModal visible={showGuestGuard} onClose={() => setShowGuestGuard(false)} />
     </SafeAreaView>
   );
 }
@@ -501,6 +529,21 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.64)',
     fontSize: 14,
     lineHeight: 20,
+  },
+  guestProfileCta: {
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 42,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  guestProfileCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   metricsRow: {
     flexDirection: 'row',

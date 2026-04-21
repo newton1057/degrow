@@ -1,3 +1,4 @@
+import * as FileSystem from 'expo-file-system/legacy';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 import { useAuth } from '@/providers/auth-provider';
@@ -16,14 +17,57 @@ type SettingsContextValue = {
 
 const SettingsContext = createContext<SettingsContextValue | null>(null);
 
+const GUEST_SETTINGS_URI = FileSystem.documentDirectory
+  ? `${FileSystem.documentDirectory}degrow-settings-guest.json`
+  : null;
+
+async function readGuestSettings(): Promise<UserSettings | null> {
+  if (!GUEST_SETTINGS_URI) {
+    return null;
+  }
+
+  try {
+    const info = await FileSystem.getInfoAsync(GUEST_SETTINGS_URI);
+
+    if (!info.exists) {
+      return null;
+    }
+
+    return JSON.parse(await FileSystem.readAsStringAsync(GUEST_SETTINGS_URI)) as UserSettings;
+  } catch {
+    return null;
+  }
+}
+
+async function writeGuestSettings(settings: UserSettings) {
+  if (!GUEST_SETTINGS_URI) {
+    return;
+  }
+
+  await FileSystem.writeAsStringAsync(GUEST_SETTINGS_URI, JSON.stringify(settings));
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const [settings, setSettings] = useState<UserSettings>(DEFAULT_USER_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const userId = user?.id ?? null;
+
+    // Guest mode: load settings from local storage
+    if (isGuest) {
+      void readGuestSettings().then((stored) => {
+        if (isMounted && stored) {
+          setSettings(stored);
+        }
+      });
+
+      return () => {
+        isMounted = false;
+      };
+    }
 
     if (!userId) {
       setSettings(DEFAULT_USER_SETTINGS);
@@ -48,9 +92,34 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       unsubscribe();
     };
-  }, [user?.id]);
+  }, [isGuest, user?.id]);
 
   const updateSettings = async (partialSettings: Partial<UserSettings>) => {
+    // Guest mode: persist locally only
+    if (isGuest) {
+      setIsLoading(true);
+
+      try {
+        const updated: UserSettings = {
+          notifications: {
+            ...settings.notifications,
+            ...partialSettings.notifications,
+          },
+          experience: {
+            ...settings.experience,
+            ...partialSettings.experience,
+          },
+        };
+
+        setSettings(updated);
+        await writeGuestSettings(updated);
+      } finally {
+        setIsLoading(false);
+      }
+
+      return;
+    }
+
     const userId = user?.id;
 
     if (!userId) {

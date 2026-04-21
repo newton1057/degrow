@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GuestGuardModal } from '@/components/guest-guard-modal';
 import { useHaptics } from '@/hooks/use-haptics';
 import { useAuth } from '@/providers/auth-provider';
 import { useI18n } from '@/providers/language-provider';
@@ -24,10 +25,37 @@ export default function ProfileEditScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, updateProfile, isLoading } = useAuth();
+  const { user, updateProfile, isLoading, isGuest } = useAuth();
   const haptics = useHaptics();
   const [name, setName] = useState(user?.name ?? '');
   const [isSaving, setIsSaving] = useState(false);
+  const [showGuestGuard, setShowGuestGuard] = useState(false);
+
+  // If guest navigates here directly, show the guard
+  if (isGuest) {
+    return (
+      <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
+        <View style={[styles.screen, { backgroundColor: colors.background }]}>
+          <View style={styles.contentColumn}>
+            <View style={styles.header}>
+              <Pressable
+                onPress={() => router.back()}
+                style={[styles.backButton, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]}>
+                <Ionicons name="chevron-back" size={22} color={colors.icon} />
+              </Pressable>
+              <Text style={[styles.screenTitle, { color: colors.text }]}>{t('profileEdit.title')}</Text>
+              <View style={styles.headerSpacer} />
+            </View>
+          </View>
+        </View>
+        <GuestGuardModal
+          visible={true}
+          onClose={() => router.back()}
+        />
+      </SafeAreaView>
+    );
+  }
 
   const hasChanges = name.trim() !== (user?.name ?? '');
   const canSave = name.trim().length > 0 && hasChanges && !isLoading && !isSaving;

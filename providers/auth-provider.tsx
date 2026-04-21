@@ -32,19 +32,25 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   isInitializing: boolean;
+  isGuest: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (name: string, email: string, pass: string) => Promise<void>;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
   updateProfile: (profile: Partial<Pick<User, 'avatarStoragePath' | 'avatarUri' | 'email' | 'name'>>) => Promise<void>;
+  continueAsGuest: () => Promise<void>;
+  exitGuestMode: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 const AUTH_STORAGE_URI = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}degrow-user.json` : null;
+const GUEST_FLAG_URI = FileSystem.documentDirectory ? `${FileSystem.documentDirectory}degrow-guest.json` : null;
 const LEGACY_HABITS_STORAGE_URI = FileSystem.documentDirectory
   ? `${FileSystem.documentDirectory}degrow-habits.json`
   : null;
+
+const GUEST_USER_ID = 'guest-local';
 
 function getDisplayNameFromEmail(email: string) {
   const fallback = 'Demo User';
@@ -89,6 +95,40 @@ async function readStoredUser() {
     return JSON.parse(await FileSystem.readAsStringAsync(AUTH_STORAGE_URI)) as User;
   } catch {
     return null;
+  }
+}
+
+async function persistGuestFlag(isGuest: boolean) {
+  if (!GUEST_FLAG_URI) {
+    return;
+  }
+
+  if (!isGuest) {
+    await FileSystem.deleteAsync(GUEST_FLAG_URI, { idempotent: true });
+    return;
+  }
+
+  await FileSystem.writeAsStringAsync(GUEST_FLAG_URI, JSON.stringify({ guest: true }));
+}
+
+async function readGuestFlag(): Promise<boolean> {
+  if (!GUEST_FLAG_URI) {
+    return false;
+  }
+
+  try {
+    const info = await FileSystem.getInfoAsync(GUEST_FLAG_URI);
+
+    if (!info.exists) {
+      return false;
+    }
+
+    const content = await FileSystem.readAsStringAsync(GUEST_FLAG_URI);
+    const parsed = JSON.parse(content);
+
+    return parsed?.guest === true;
+  } catch {
+    return false;
   }
 }
 
@@ -140,70 +180,131 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [hasLoadedUser, setHasLoadedUser] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
     let isMounted = true;
 
-    const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
-      const storedUser = await readStoredUser();
+    const initAuth = async () => {
+      // Check guest flag first
+      const wasGuest = await readGuestFlag();
 
-      if (!isMounted) {
-        return;
-      }
-
-      if (!firebaseUser) {
-        setUser(null);
+      if (wasGuest && isMounted) {
+        setIsGuest(true);
+        setUser({
+          id: GUEST_USER_ID,
+          name: 'Guest',
+          email: '',
+          avatarUri: null,
+          avatarStoragePath: null,
+        });
         setIsInitializing(false);
         setHasLoadedUser(true);
         return;
       }
 
-      const authUser = mapFirebaseUser(firebaseUser, storedUser);
+      // Not guest, proceed with Firebase auth
+      const unsubscribe = onAuthStateChanged(firebaseAuth, async (firebaseUser) => {
+        const storedUser = await readStoredUser();
 
-      setUser(authUser);
-      setIsInitializing(false);
-      setHasLoadedUser(true);
-
-      try {
-        const profile = await ensureUserProfileDocument(authUser);
-
-        if (isMounted && firebaseAuth.currentUser?.uid === profile.id) {
-          setUser(mapUserProfile(profile));
+        if (!isMounted) {
+          return;
         }
-      } catch (error) {
+
+        if (!firebaseUser) {
+          setUser(null);
+          setIsInitializing(false);
+          setHasLoadedUser(true);
+          return;
+        }
+
+        const authUser = mapFirebaseUser(firebaseUser, storedUser);
+
+        setUser(authUser);
+        setIsInitializing(false);
+        setHasLoadedUser(true);
+
+        try {
+          const profile = await ensureUserProfileDocument(authUser);
+
+          if (isMounted && firebaseAuth.currentUser?.uid === profile.id) {
+            setUser(mapUserProfile(profile));
+          }
+        } catch (error) {
+          if (isMounted) {
+            console.warn('Unable to sync user profile with Firestore.', error);
+          }
+        }
+      }, () => {
         if (isMounted) {
-          console.warn('Unable to sync user profile with Firestore.', error);
+          setUser(null);
+          setIsInitializing(false);
+          setHasLoadedUser(true);
         }
-      }
-    }, () => {
-      if (isMounted) {
-        setUser(null);
-        setIsInitializing(false);
-        setHasLoadedUser(true);
-      }
+      });
+
+      return unsubscribe;
+    };
+
+    let unsubscribe: (() => void) | undefined;
+
+    void initAuth().then((unsub) => {
+      unsubscribe = unsub;
     });
 
     return () => {
       isMounted = false;
-      unsubscribe();
+      unsubscribe?.();
     };
   }, []);
 
   useEffect(() => {
-    if (!hasLoadedUser) {
+    if (!hasLoadedUser || isGuest) {
       return;
     }
 
     void persistUser(user).catch(() => {
       // Keep the in-memory session usable even if local persistence fails.
     });
-  }, [hasLoadedUser, user]);
+  }, [hasLoadedUser, isGuest, user]);
+
+  const continueAsGuest = async () => {
+    setIsLoading(true);
+
+    try {
+      await persistGuestFlag(true);
+      setIsGuest(true);
+      setUser({
+        id: GUEST_USER_ID,
+        name: 'Guest',
+        email: '',
+        avatarUri: null,
+        avatarStoragePath: null,
+      });
+      router.replace('/(tabs)');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const exitGuestMode = async () => {
+    await persistGuestFlag(false);
+    setIsGuest(false);
+    setUser(null);
+    router.replace('/(auth)/login');
+  };
 
   const signIn = async (email: string, pass: string) => {
     setIsLoading(true);
 
     try {
+      // If coming from guest mode, clear the guest flag
+      if (isGuest) {
+        await persistGuestFlag(false);
+        setIsGuest(false);
+      }
+
       const credential = await signInWithEmailAndPassword(firebaseAuth, email.trim(), pass);
       const storedUser = await readStoredUser();
 
@@ -221,6 +322,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
+      // If coming from guest mode, clear the guest flag
+      if (isGuest) {
+        await persistGuestFlag(false);
+        setIsGuest(false);
+      }
+
       const credential = await createUserWithEmailAndPassword(firebaseAuth, trimmedEmail, pass);
 
       if (trimmedName) {
@@ -255,6 +362,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
 
     try {
+      if (isGuest) {
+        await exitGuestMode();
+        return;
+      }
+
       await firebaseSignOut(firebaseAuth);
       setUser(null);
       router.replace('/(auth)/login');
@@ -264,6 +376,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const deleteAccount = async () => {
+    if (isGuest) {
+      // Guest mode: clear local data and exit
+      await clearLocalUserData(GUEST_USER_ID);
+      await exitGuestMode();
+      return;
+    }
+
     const currentUser = user;
     const firebaseUser = firebaseAuth.currentUser;
 
@@ -288,6 +407,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const currentUser = user;
 
     if (!currentUser) {
+      return;
+    }
+
+    // Guest mode: only update locally in memory
+    if (isGuest) {
+      setUser({ ...currentUser, ...profile });
       return;
     }
 
@@ -327,11 +452,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         isLoading,
         isInitializing,
+        isGuest,
         signIn,
         signUp,
         signOut,
         deleteAccount,
         updateProfile,
+        continueAsGuest,
+        exitGuestMode,
       }}>
       {children}
     </AuthContext.Provider>

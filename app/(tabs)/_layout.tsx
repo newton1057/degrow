@@ -16,7 +16,7 @@ import { useAppTheme } from '@/providers/theme-provider';
 export default function TabLayout() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, isInitializing } = useAuth();
+  const { user, isInitializing, isGuest } = useAuth();
   const isIOS = Platform.OS === 'ios';
   const tabBlurEffect: NativeTabsBlurEffect | undefined = isIOS
     ? resolvedTheme === 'light'
@@ -52,7 +52,8 @@ export default function TabLayout() {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
-  if (!user) {
+  // Allow both authenticated users and guests
+  if (!user && !isGuest) {
     return <Redirect href="/(auth)/login" />;
   }
 

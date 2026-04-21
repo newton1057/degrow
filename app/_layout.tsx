@@ -21,7 +21,7 @@ export const unstable_settings = {
 function RootLayoutNav() {
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { user, isInitializing } = useAuth();
+  const { user, isInitializing, isGuest } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const [hasMounted, setHasMounted] = useState(false);
@@ -37,12 +37,16 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === '(auth)';
 
-    if (!user && !inAuthGroup) {
+    // Allow both authenticated users and guests to access the main app
+    if (!user && !isGuest && !inAuthGroup) {
       router.replace('/(auth)/login');
-    } else if (user && inAuthGroup) {
-      router.replace('/(tabs)');
+    } else if ((user || isGuest) && inAuthGroup) {
+      // Only redirect out of auth if the user is NOT a guest navigating to auth to create account
+      if (!isGuest) {
+        router.replace('/(tabs)');
+      }
     }
-  }, [hasMounted, isInitializing, router, segments, user]);
+  }, [hasMounted, isInitializing, isGuest, router, segments, user]);
 
   const navigationTheme = {
     ...(resolvedTheme === 'dark' ? DarkTheme : DefaultTheme),

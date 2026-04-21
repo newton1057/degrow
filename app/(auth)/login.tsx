@@ -24,7 +24,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const { colors, resolvedTheme } = useAppTheme();
-  const { signIn, isLoading } = useAuth();
+  const { signIn, continueAsGuest, isLoading } = useAuth();
   const haptics = useHaptics();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -41,6 +41,16 @@ export default function LoginScreen() {
       await signIn(email, password);
     } catch (error) {
       Alert.alert(t('auth.logInErrorTitle'), t(getFirebaseAuthErrorMessageKey(error)));
+    }
+  };
+
+  const handleContinueAsGuest = async () => {
+    void haptics.impactAsync(haptics.ImpactFeedbackStyle.Light);
+
+    try {
+      await continueAsGuest();
+    } catch {
+      // Guest mode should always work since it's local-only
     }
   };
 
@@ -99,6 +109,19 @@ export default function LoginScreen() {
 
           </View>
 
+          <Pressable
+            onPress={handleContinueAsGuest}
+            disabled={isLoading}
+            style={({ pressed }) => [
+              styles.guestButton,
+              { borderColor: colors.border },
+              (pressed || isLoading) && { opacity: 0.7 },
+            ]}>
+            <Text style={[styles.guestButtonText, { color: colors.textMuted }]}>
+              {t('guest.continueWithout')}
+            </Text>
+          </Pressable>
+
           <View style={styles.footerArea}>
             <Text style={[styles.footerText, { color: colors.textMuted }]}>
               {t('auth.noAccount')}
@@ -143,7 +166,7 @@ const styles = StyleSheet.create({
   },
   formArea: {
     gap: 20,
-    marginBottom: 40,
+    marginBottom: 20,
   },
   inputGroup: {
     gap: 8,
@@ -172,6 +195,18 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: -0.4,
+  },
+  guestButton: {
+    height: 50,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  guestButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
   footerArea: {
     flexDirection: 'row',

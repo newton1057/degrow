@@ -1,9 +1,11 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { GuestGuardModal } from '@/components/guest-guard-modal';
 import { useAuth } from '@/providers/auth-provider';
 import { useI18n, type AppLanguage } from '@/providers/language-provider';
 import { useSettings } from '@/providers/settings-provider';
@@ -132,8 +134,9 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
   const { colors, resolvedTheme, themePreference, setThemePreference } = useAppTheme();
-  const { deleteAccount, isLoading: isAccountLoading, signOut } = useAuth();
+  const { deleteAccount, isLoading: isAccountLoading, isGuest, signOut } = useAuth();
   const { settings, updateSettings } = useSettings();
+  const [showGuestGuard, setShowGuestGuard] = useState(false);
 
   const handleToggleNotifications = async (value: boolean) => {
     await updateSettings({
@@ -163,6 +166,31 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteAccount = () => {
+    if (isGuest) {
+      Alert.alert(
+        t('guest.deleteGuestDataTitle'),
+        t('guest.deleteGuestDataMessage'),
+        [
+          {
+            text: t('common.cancel'),
+            style: 'cancel',
+          },
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await deleteAccount();
+              } catch {
+                // Guest data deletion is local-only
+              }
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     Alert.alert(
       t('auth.deleteAccountTitle'),
       t('auth.deleteAccountMessage'),
@@ -184,6 +212,14 @@ export default function SettingsScreen() {
         },
       ]
     );
+  };
+
+  const handleGuardedNavigation = (route: string) => {
+    if (isGuest) {
+      setShowGuestGuard(true);
+      return;
+    }
+    router.push(route as any);
   };
 
   return (
@@ -211,6 +247,26 @@ export default function SettingsScreen() {
                 <Text style={[styles.heroSubtitle, { color: colors.textMuted }]}>{t('settings.heroSubtitle')}</Text>
               </View>
             </View>
+
+            {/* Guest mode banner */}
+            {isGuest && (
+              <Pressable
+                onPress={() => setShowGuestGuard(true)}
+                style={({ pressed }) => [
+                  styles.guestBanner,
+                  { backgroundColor: colors.surface, borderColor: colors.tint },
+                  pressed && { opacity: 0.85 },
+                ]}>
+                <View style={[styles.guestBannerIcon, { backgroundColor: `${colors.tint}20` }]}>
+                  <MaterialCommunityIcons name="account-outline" size={20} color={colors.tint} />
+                </View>
+                <View style={styles.guestBannerText}>
+                  <Text style={[styles.guestBannerTitle, { color: colors.text }]}>{t('guest.bannerTitle')}</Text>
+                  <Text style={[styles.guestBannerSubtitle, { color: colors.textMuted }]}>{t('guest.bannerSubtitle')}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.tint} />
+              </Pressable>
+            )}
 
             <Section eyebrow={t('settings.sections.focusEyebrow')} title={t('settings.sections.habitsAndReminders')}>
               <SettingToggleRow
@@ -291,8 +347,8 @@ export default function SettingsScreen() {
                 icon="account-circle-outline"
                 title={t('settings.rows.profileTitle')}
                 description={t('settings.rows.profileDescription')}
-                value={t('settings.values.personal')}
-                onPress={() => router.push('/profile-edit')}
+                value={isGuest ? t('guest.label') : t('settings.values.personal')}
+                onPress={() => handleGuardedNavigation('/profile-edit')}
               />
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <SettingValueRow
@@ -320,39 +376,75 @@ export default function SettingsScreen() {
               />
             </Section>
 
-            <Pressable
-              onPress={signOut}
-              disabled={isAccountLoading}
-              style={({ pressed }) => [
-                styles.signOutButton,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-                (pressed || isAccountLoading) && { opacity: 0.7 }
-              ]}
-            >
-              <MaterialCommunityIcons name="logout" size={20} color="#FF453A" />
-              <Text style={styles.signOutText}>{t('auth.signOut')}</Text>
-            </Pressable>
+            {isGuest ? (
+              /* Guest: show "Create Account" + "Delete Local Data" */
+              <>
+                <Pressable
+                  onPress={() => setShowGuestGuard(true)}
+                  style={({ pressed }) => [
+                    styles.signOutButton,
+                    { backgroundColor: colors.tint, borderColor: colors.tint },
+                    pressed && { opacity: 0.85 },
+                  ]}>
+                  <Ionicons name="person-add-outline" size={20} color={colors.background} />
+                  <Text style={[styles.signOutText, { color: colors.background }]}>{t('guest.createAccount')}</Text>
+                </Pressable>
 
-            <Pressable
-              onPress={handleDeleteAccount}
-              disabled={isAccountLoading}
-              style={({ pressed }) => [
-                styles.deleteAccountButton,
-                { backgroundColor: colors.surface, borderColor: 'rgba(255,69,58,0.34)' },
-                (pressed || isAccountLoading) && { opacity: 0.7 }
-              ]}
-            >
-              <MaterialCommunityIcons name="account-remove-outline" size={20} color="#FF453A" />
-              <View style={styles.deleteAccountTextWrap}>
-                <Text style={styles.deleteAccountText}>{t('settings.rows.deleteAccountTitle')}</Text>
-                <Text style={[styles.deleteAccountDescription, { color: colors.textMuted }]}>
-                  {t('settings.rows.deleteAccountDescription')}
-                </Text>
-              </View>
-            </Pressable>
+                <Pressable
+                  onPress={handleDeleteAccount}
+                  disabled={isAccountLoading}
+                  style={({ pressed }) => [
+                    styles.deleteAccountButton,
+                    { backgroundColor: colors.surface, borderColor: 'rgba(255,69,58,0.34)' },
+                    (pressed || isAccountLoading) && { opacity: 0.7 }
+                  ]}>
+                  <MaterialCommunityIcons name="delete-outline" size={20} color="#FF453A" />
+                  <View style={styles.deleteAccountTextWrap}>
+                    <Text style={styles.deleteAccountText}>{t('guest.deleteGuestDataTitle')}</Text>
+                    <Text style={[styles.deleteAccountDescription, { color: colors.textMuted }]}>
+                      {t('guest.deleteGuestDataDescription')}
+                    </Text>
+                  </View>
+                </Pressable>
+              </>
+            ) : (
+              /* Authenticated user: sign out + delete account */
+              <>
+                <Pressable
+                  onPress={signOut}
+                  disabled={isAccountLoading}
+                  style={({ pressed }) => [
+                    styles.signOutButton,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                    (pressed || isAccountLoading) && { opacity: 0.7 }
+                  ]}>
+                  <MaterialCommunityIcons name="logout" size={20} color="#FF453A" />
+                  <Text style={styles.signOutText}>{t('auth.signOut')}</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleDeleteAccount}
+                  disabled={isAccountLoading}
+                  style={({ pressed }) => [
+                    styles.deleteAccountButton,
+                    { backgroundColor: colors.surface, borderColor: 'rgba(255,69,58,0.34)' },
+                    (pressed || isAccountLoading) && { opacity: 0.7 }
+                  ]}>
+                  <MaterialCommunityIcons name="account-remove-outline" size={20} color="#FF453A" />
+                  <View style={styles.deleteAccountTextWrap}>
+                    <Text style={styles.deleteAccountText}>{t('settings.rows.deleteAccountTitle')}</Text>
+                    <Text style={[styles.deleteAccountDescription, { color: colors.textMuted }]}>
+                      {t('settings.rows.deleteAccountDescription')}
+                    </Text>
+                  </View>
+                </Pressable>
+              </>
+            )}
           </ScrollView>
         </View>
       </View>
+
+      <GuestGuardModal visible={showGuestGuard} onClose={() => setShowGuestGuard(false)} />
     </SafeAreaView>
   );
 }
@@ -435,6 +527,34 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.62)',
     fontSize: 13.5,
     lineHeight: 19,
+  },
+  guestBanner: {
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  guestBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guestBannerText: {
+    flex: 1,
+  },
+  guestBannerTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  guestBannerSubtitle: {
+    marginTop: 3,
+    fontSize: 12.5,
+    lineHeight: 17,
   },
   sectionCard: {
     borderRadius: 26,

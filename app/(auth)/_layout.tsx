@@ -5,14 +5,15 @@ import { useAuth } from '@/providers/auth-provider';
 import { useAppTheme } from '@/providers/theme-provider';
 
 export default function AuthLayout() {
-  const { user, isInitializing } = useAuth();
+  const { user, isInitializing, isGuest } = useAuth();
   const { colors } = useAppTheme();
 
   if (isInitializing) {
     return <View style={{ flex: 1, backgroundColor: colors.background }} />;
   }
 
-  if (user) {
+  // Allow guests to visit auth screens (to create account / log in)
+  if (user && !isGuest) {
     return <Redirect href="/(tabs)" />;
   }
 

@@ -140,7 +140,7 @@ async function writeLocalHabitsPayload(userId: string, payload: StoredHabitsPayl
 }
 
 export function HabitsProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  const { user, isGuest } = useAuth();
   const { settings } = useSettings();
   const [habits, setHabits] = useState<HabitItem[]>([]);
   const [hasLoadedLocalState, setHasLoadedLocalState] = useState(false);
@@ -190,6 +190,17 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
     void loadHabits();
 
+    // Guest mode: skip Firestore subscription, use local-only storage
+    if (isGuest) {
+      if (isMounted) {
+        setHasLoadedRemoteState(true);
+      }
+
+      return () => {
+        isMounted = false;
+      };
+    }
+
     const unsubscribe = subscribeToUserHabitsState(
       userId,
       (remotePayload) => {
@@ -223,7 +234,7 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       unsubscribe();
     };
-  }, [currentWeekId, startOfWeek, user?.id]);
+  }, [currentWeekId, isGuest, startOfWeek, user?.id]);
 
   // Detectar cambio de semana y reiniciar progreso
   useEffect(() => {
@@ -265,15 +276,19 @@ export function HabitsProvider({ children }: { children: ReactNode }) {
 
     lastSyncedPayloadRef.current = serializedPayload;
 
+    // Always persist locally
     void writeLocalHabitsPayload(userId, payload).catch((error) => {
       console.warn('Unable to persist local habits cache.', error);
     });
 
-    void saveUserHabitsState(userId, payload).catch((error) => {
-      console.warn('Unable to persist habits to Firestore.', error);
-      lastSyncedPayloadRef.current = null;
-    });
-  }, [currentWeekId, habits, hasLoadedLocalState, hasLoadedRemoteState, user?.id]);
+    // Only sync to Firestore for non-guest users
+    if (!isGuest) {
+      void saveUserHabitsState(userId, payload).catch((error) => {
+        console.warn('Unable to persist habits to Firestore.', error);
+        lastSyncedPayloadRef.current = null;
+      });
+    }
+  }, [currentWeekId, habits, hasLoadedLocalState, hasLoadedRemoteState, isGuest, user?.id]);
 
   const addHabit = (input: CreateHabitInput) => {
     const nextHabit: HabitItem = {
