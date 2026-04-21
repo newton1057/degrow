@@ -1,7 +1,6 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useRouter } from 'expo-router';
-import * as Sharing from 'expo-sharing';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -74,20 +73,28 @@ export default function ExportDataScreen() {
       await FileSystem.writeAsStringAsync(fileUri, JSON.stringify(exportData, null, 2));
 
       // Compartir archivo
-      const canShare = await Sharing.isAvailableAsync();
+      try {
+        const Sharing = await import('expo-sharing');
+        const canShare = await Sharing.isAvailableAsync();
 
-      if (canShare) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/json',
-          dialogTitle: t('exportData.shareTitle'),
-          UTI: 'public.json',
-        });
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: 'application/json',
+            dialogTitle: t('exportData.shareTitle'),
+            UTI: 'public.json',
+          });
 
-        void haptics.notificationAsync(haptics.NotificationFeedbackType.Success);
-      } else {
+          void haptics.notificationAsync(haptics.NotificationFeedbackType.Success);
+        } else {
+          Alert.alert(
+            t('exportData.errorTitle'),
+            'Sharing is not available on this device.'
+          );
+        }
+      } catch {
         Alert.alert(
           t('exportData.errorTitle'),
-          'Sharing is not available on this device.'
+          'Sharing is not available in this build. Rebuild the app with expo-sharing to use this feature.'
         );
       }
     } catch (error) {
